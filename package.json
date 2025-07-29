@@ -1,0 +1,15 @@
+{
+  "name": "concrete-calculator",
+  "version": "1.0.0",
+  "description": "A calculator for concrete mix proportions for detailed statues and decorative pieces",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "inquirer": "^9.2.0"
+  },
+  "license": "MIT",
+  "type": "module"
+}
