@@ -7,6 +7,16 @@ console.log(
   '\n🏗️  Concrete Calculator for Detailed Statues & Decorative Pieces\n'
 );
 
+// 0.05% of cement weight — conservative start within the 0.01–0.20% safe range
+const X33_DOSAGE_PERCENT = 0.0005;
+
+export function formatDefoamer(grams) {
+  if (grams < 1) {
+    return `${(grams * 1000).toFixed(0)}mg (${grams.toFixed(3)}g)`;
+  }
+  return `${grams.toFixed(3)}g`;
+}
+
 async function main() {
   try {
     const { mixType } = await inquirer.prompt([
@@ -94,7 +104,20 @@ async function handleMoldCalculation() {
       },
     ]);
 
-    const results = calculatePremixedConcrete(concreteWeight, waterRatio.ratio);
+    const { useX33 } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'useX33',
+        message: 'Add X33 defoamer? (reduces surface bubbles & pinholes)',
+        default: true,
+      },
+    ]);
+
+    const results = calculatePremixedConcrete(
+      concreteWeight,
+      waterRatio.ratio,
+      useX33
+    );
     displayPremixedResults(results);
   } else {
     const csaInput = await inquirer.prompt([
@@ -106,7 +129,20 @@ async function handleMoldCalculation() {
       },
     ]);
 
-    const results = calculateScratchMix(concreteWeight, csaInput.useCSA);
+    const { useX33 } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'useX33',
+        message: 'Add X33 defoamer? (reduces surface bubbles & pinholes)',
+        default: true,
+      },
+    ]);
+
+    const results = calculateScratchMix(
+      concreteWeight,
+      csaInput.useCSA,
+      useX33
+    );
     displayScratchResults(results);
   }
 
@@ -136,9 +172,19 @@ async function handlePremixedConcrete() {
     },
   ]);
 
+  const { useX33 } = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'useX33',
+      message: 'Add X33 defoamer? (reduces surface bubbles & pinholes)',
+      default: true,
+    },
+  ]);
+
   const results = calculatePremixedConcrete(
     answers.concreteAmount,
-    answers.waterRatio
+    answers.waterRatio,
+    useX33
   );
   displayPremixedResults(results);
 }
@@ -161,11 +207,24 @@ async function handleScratchMix() {
     },
   ]);
 
-  const results = calculateScratchMix(answers.totalAmount, answers.useCSA);
+  const { useX33 } = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'useX33',
+      message: 'Add X33 defoamer? (reduces surface bubbles & pinholes)',
+      default: true,
+    },
+  ]);
+
+  const results = calculateScratchMix(
+    answers.totalAmount,
+    answers.useCSA,
+    useX33
+  );
   displayScratchResults(results);
 }
 
-function calculatePremixedConcrete(concreteAmount, waterRatio) {
+export function calculatePremixedConcrete(concreteAmount, waterRatio, useX33) {
   // Calculate base water amount from supplier's ratio
   const baseWaterAmount = (concreteAmount * waterRatio) / 100;
 
@@ -180,6 +239,9 @@ function calculatePremixedConcrete(concreteAmount, waterRatio) {
   const waterReduction = 0.1;
   const reducedWaterAmount = baseWaterAmount * (1 - waterReduction);
 
+  // X33 defoamer: 0.05% of estimated cement weight — add to dry mix before water
+  const x33Amount = useX33 ? estimatedCement * X33_DOSAGE_PERCENT : 0;
+
   return {
     concreteAmount,
     baseWaterAmount,
@@ -189,10 +251,12 @@ function calculatePremixedConcrete(concreteAmount, waterRatio) {
     estimatedCement,
     waterRatio,
     waterReduction: waterReduction * 100,
+    useX33,
+    x33Amount,
   };
 }
 
-function calculateScratchMix(totalAmount, useCSA) {
+export function calculateScratchMix(totalAmount, useCSA, useX33) {
   // Using 1:1 cement:sand ratio for fine detailed work (no aggregate)
   // Perfect for statues and decorative pieces requiring smooth finish
 
@@ -226,6 +290,9 @@ function calculateScratchMix(totalAmount, useCSA) {
   // Level+ Plasticizer: 0.75% of total cement weight (your specific product)
   const plasticizer = totalCementWeight * 0.0075;
 
+  // X33 defoamer: 0.05% of total cement weight — add to dry mix before water
+  const x33Amount = useX33 ? totalCementWeight * X33_DOSAGE_PERCENT : 0;
+
   return {
     totalAmount,
     portlandCement,
@@ -236,6 +303,8 @@ function calculateScratchMix(totalAmount, useCSA) {
     plasticizer,
     useCSA,
     totalCementWeight,
+    useX33,
+    x33Amount,
   };
 }
 
@@ -250,7 +319,24 @@ function displayPremixedResults(results) {
     )}ml (${results.waterReduction.toFixed(0)}% reduction)`
   );
   console.log(`Estimated cement: ${results.estimatedCement.toFixed(0)}g`);
-  console.log('📝 Mix plasticizer with water before adding to concrete');
+
+  if (results.useX33) {
+    console.log(
+      `X33 Defoamer: ${formatDefoamer(results.x33Amount)} — weigh on a mg scale`
+    );
+    console.log('\n📋 Mixing Order (X33 active):');
+    console.log(
+      '  1. Weigh out concrete powder into mixing vessel'
+    );
+    console.log(
+      '  2. Add X33 powder — mix dry for 30 seconds until evenly distributed'
+    );
+    console.log('  3. Mix plasticizer into water in a separate cup');
+    console.log('  4. Add water+plasticizer to dry mix gradually');
+    console.log('  5. Mix thoroughly for 2–3 minutes');
+  } else {
+    console.log('\n📝 Mix plasticizer with water before adding to concrete');
+  }
 }
 
 function displayScratchResults(results) {
@@ -263,12 +349,43 @@ function displayScratchResults(results) {
   console.log(`Sand: ${results.fineSand.toFixed(1)}g`);
   console.log(`Water: ${results.water.toFixed(1)}ml`);
   console.log(`Level+ Plasticizer: ${results.plasticizer.toFixed(1)}ml`);
-  console.log(
-    `📝 1:1 ratio | W/C: 0.44${
-      results.useCSA ? ' | CSA blend: 2hr max hardening' : ''
-    }`
-  );
+
+  if (results.useX33) {
+    console.log(
+      `X33 Defoamer: ${formatDefoamer(results.x33Amount)} — weigh on a mg scale`
+    );
+    console.log('\n📋 Mixing Order (X33 active):');
+    console.log('  1. Combine Portland cement + CSA cement (if using) in vessel');
+    console.log('  2. Add fine sand — stir to combine');
+    console.log(
+      '  3. Add X33 powder — mix dry for 30 seconds until evenly distributed'
+    );
+    console.log('  4. Mix plasticizer into water in a separate cup');
+    console.log('  5. Add water+plasticizer to dry mix gradually');
+    console.log('  6. Mix thoroughly for 2–3 minutes');
+    console.log(
+      '  ⚠️  Do not exceed X33 dosage — overdosing weakens surface quality'
+    );
+  } else {
+    console.log(
+      `📝 1:1 ratio | W/C: 0.44${
+        results.useCSA ? ' | CSA blend: 2hr max hardening' : ''
+      }`
+    );
+  }
+
+  if (results.useX33) {
+    console.log(
+      `\n📝 1:1 ratio | W/C: 0.44${
+        results.useCSA ? ' | CSA blend: 2hr max hardening' : ''
+      }`
+    );
+  }
 }
 
-// Start the application
-main();
+const isEntryPoint =
+  process.argv[1] === new URL(import.meta.url).pathname;
+
+if (isEntryPoint) {
+  main();
+}
