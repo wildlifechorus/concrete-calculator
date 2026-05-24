@@ -1,0 +1,886 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Concrete Color Simulator</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --bg: #ffffff;
+        --bg-subtle: #f5f5f5;
+        --border: #e0e0e0;
+        --text: #111111;
+        --text-2: #555555;
+        --text-3: #888888;
+        --accent: #0066cc;
+        --radius: 6px;
+        --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1a1a1a;
+          --bg-subtle: #242424;
+          --border: #333333;
+          --text: #f0f0f0;
+          --text-2: #aaaaaa;
+          --text-3: #666666;
+          --accent: #4d9fff;
+        }
+      }
+
+      body {
+        font-family: var(--font);
+        background: var(--bg);
+        color: var(--text);
+        padding: 32px 24px;
+        max-width: 820px;
+        margin: 0 auto;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      h1 {
+        font-size: 22px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      h2 {
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 14px;
+      }
+      h3 {
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+
+      .subtitle {
+        color: var(--text-2);
+        font-size: 13px;
+        margin-bottom: 24px;
+      }
+
+      hr {
+        border: none;
+        border-top: 1px solid var(--border);
+        margin: 24px 0;
+      }
+
+      hr.thin {
+        margin: 14px 0;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 32px;
+        align-items: start;
+      }
+
+      @media (max-width: 640px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* Controls */
+      .controls {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .field label {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text);
+      }
+
+      .field .hint {
+        font-size: 11px;
+        color: var(--text-3);
+        margin-top: 2px;
+      }
+
+      select,
+      input[type='number'] {
+        background: var(--bg-subtle);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        color: var(--text);
+        font-family: var(--font);
+        font-size: 13px;
+        padding: 6px 10px;
+        width: 100%;
+        outline: none;
+      }
+
+      select:focus,
+      input[type='number']:focus {
+        border-color: var(--accent);
+      }
+
+      input[type='number'] {
+        width: 80px;
+      }
+
+      /* Toggle */
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .toggle {
+        position: relative;
+        width: 36px;
+        height: 20px;
+        flex-shrink: 0;
+        cursor: pointer;
+      }
+
+      .toggle input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+        position: absolute;
+      }
+
+      .toggle-track {
+        position: absolute;
+        inset: 0;
+        border-radius: 10px;
+        background: var(--border);
+        transition: background 0.18s;
+      }
+
+      .toggle input:checked + .toggle-track {
+        background: var(--accent);
+      }
+
+      .toggle-thumb {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #fff;
+        transition: transform 0.18s;
+        pointer-events: none;
+      }
+
+      .toggle input:checked ~ .toggle-thumb {
+        transform: translateX(16px);
+      }
+
+      .toggle-label {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .toggle-label span {
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .toggle-label small {
+        font-size: 11px;
+        color: var(--text-3);
+      }
+
+      /* Pigment sub-controls */
+      #pigment-fields {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding-left: 4px;
+      }
+
+      #pigment-fields.hidden {
+        display: none;
+      }
+
+      #pigment-2-fields {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding-left: 4px;
+      }
+
+      #pigment-2-fields.hidden {
+        display: none;
+      }
+
+      /* Pigment color dot */
+      .pigment-selector {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .pigment-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        border: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+
+      /* Gradient strip */
+      .strip-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      #gradient-strip {
+        display: flex;
+        height: 10px;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+
+      .strip-seg {
+        flex: 1;
+        transition: outline 0.1s;
+      }
+
+      .strip-labels {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: var(--text-3);
+      }
+
+      /* Mix swatch (blended pigment preview) */
+      .mix-preview-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 11px;
+        color: var(--text-3);
+      }
+
+      .mix-swatch {
+        width: 22px;
+        height: 14px;
+        border-radius: 3px;
+        border: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+
+      /* Preview */
+      .preview {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .swatches {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .swatch-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .swatch {
+        height: 160px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: flex-end;
+        padding: 0 10px 8px;
+        transition: background 0.2s;
+      }
+
+      .swatch-hex {
+        font-family: monospace;
+        font-size: 12px;
+        transition: color 0.2s;
+      }
+
+      .swatch-label {
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      /* Callout */
+      .callout {
+        background: var(--bg-subtle);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 10px 12px;
+        font-size: 12px;
+        color: var(--text-2);
+        line-height: 1.5;
+      }
+
+      .callout.warn {
+        border-color: #b8820a;
+        background: rgba(184, 130, 10, 0.07);
+      }
+
+      /* Range section */
+      .range-section {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .range-strip {
+        display: flex;
+        gap: 5px;
+      }
+
+      .range-col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .range-swatch {
+        width: 100%;
+        aspect-ratio: 1 / 1.5;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+        transition: background 0.2s;
+      }
+
+      .range-swatch.active {
+        border: 2px solid var(--accent);
+      }
+
+      .range-pct {
+        font-size: 10px;
+        color: var(--text-3);
+      }
+
+      /* Export / Import buttons */
+      .action-bar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 12px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: var(--bg-subtle);
+        color: var(--text);
+        font-family: var(--font);
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+      }
+
+      .btn:hover {
+        border-color: var(--accent);
+        background: var(--bg);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Concrete Color Simulator</h1>
+    <p class="subtitle">
+      Approximate color preview based on mix settings. Actual results vary by batch, water content,
+      and curing conditions.
+    </p>
+
+    <hr />
+
+    <div class="layout">
+      <!-- Controls -->
+      <div class="controls">
+        <h2>Mix Settings</h2>
+
+        <div class="field">
+          <label for="cement-type">Cement type</label>
+          <select id="cement-type">
+            <option value="white">White Portland</option>
+            <option value="grey">Grey Portland</option>
+          </select>
+        </div>
+
+        <div class="toggle-row">
+          <label class="toggle">
+            <input type="checkbox" id="use-sand" />
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+          <div class="toggle-label">
+            <span>Include fine sand</span>
+            <small id="sand-hint">Cement-only paste</small>
+          </div>
+        </div>
+
+        <hr />
+
+        <div class="toggle-row">
+          <label class="toggle">
+            <input type="checkbox" id="use-pigment" />
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+          <div class="toggle-label">
+            <span>Add pigment</span>
+          </div>
+        </div>
+
+        <div id="pigment-fields" class="hidden">
+          <div class="field">
+            <label for="pigment-select">Pigment</label>
+            <div class="pigment-selector">
+              <div class="pigment-dot" id="pigment-dot"></div>
+              <select id="pigment-select"></select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="pigment-pct">Amount (% of cement weight)</label>
+            <div style="display: flex; align-items: center; gap: 10px">
+              <input type="number" id="pigment-pct" value="5" min="1" max="10" step="0.5" />
+              <span style="font-size: 12px; color: var(--text-3)">1 – 10 %</span>
+            </div>
+            <div class="strip-wrap" style="margin-top: 8px">
+              <div id="gradient-strip"></div>
+              <div class="strip-labels"><span>1%</span><span>10%</span></div>
+            </div>
+          </div>
+
+          <hr class="thin" />
+
+          <!-- Second pigment (color mixing) -->
+          <div class="toggle-row">
+            <label class="toggle">
+              <input type="checkbox" id="use-pigment-2" />
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+            <div class="toggle-label">
+              <span>Mix second pigment</span>
+            </div>
+          </div>
+
+          <div id="pigment-2-fields" class="hidden">
+            <div class="field">
+              <label for="pigment-2-select">Second pigment</label>
+              <div class="pigment-selector">
+                <div class="pigment-dot" id="pigment-2-dot"></div>
+                <select id="pigment-2-select"></select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="pigment-2-pct">Amount (% of cement weight)</label>
+              <div style="display: flex; align-items: center; gap: 10px">
+                <input type="number" id="pigment-2-pct" value="3" min="1" max="10" step="0.5" />
+                <span style="font-size: 12px; color: var(--text-3)">1 – 10 %</span>
+              </div>
+            </div>
+
+            <div class="mix-preview-row">
+              <div class="mix-swatch" id="mix-swatch"></div>
+              <span id="mix-label">Blended pigment preview</span>
+            </div>
+          </div>
+        </div>
+
+        <hr />
+
+        <!-- Profile export / import -->
+        <div>
+          <h3>Color Profile</h3>
+          <div class="action-bar">
+            <button class="btn" id="btn-export">↓ Export</button>
+            <button class="btn" id="btn-import">↑ Import</button>
+            <input type="file" id="file-import" accept=".json" style="display: none" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div class="preview">
+        <h2>Preview</h2>
+
+        <div class="swatches">
+          <div class="swatch-wrap">
+            <div class="swatch" id="swatch-dry">
+              <span class="swatch-hex" id="hex-dry"></span>
+            </div>
+            <span class="swatch-label">Dry / Cured</span>
+          </div>
+          <div class="swatch-wrap">
+            <div class="swatch" id="swatch-wet">
+              <span class="swatch-hex" id="hex-wet"></span>
+            </div>
+            <span class="swatch-label">Wet / Fresh poured</span>
+          </div>
+        </div>
+
+        <div class="callout" id="callout"></div>
+      </div>
+    </div>
+
+    <!-- Full pigment range strip -->
+    <div id="range-section" style="display: none">
+      <hr />
+      <div class="range-section">
+        <h3 id="range-title"></h3>
+        <p style="font-size: 12px; color: var(--text-3); margin-bottom: 4px">
+          0% (base) through 10% pigment by cement weight
+        </p>
+        <div class="range-strip" id="range-strip"></div>
+      </div>
+    </div>
+
+    <script src="lib/data.browser.js"></script>
+    <script>
+      const { PIGMENTS } = window.SIMULATOR_DATA;
+
+      function populatePigmentSelect(el) {
+        el.innerHTML = '';
+        for (const [key, { label }] of Object.entries(PIGMENTS)) {
+          const opt = document.createElement('option');
+          opt.value = key;
+          opt.textContent = label;
+          el.appendChild(opt);
+        }
+      }
+
+      const pigmentSelectEl = document.getElementById('pigment-select');
+      const pigment2SelectEl = document.getElementById('pigment-2-select');
+      populatePigmentSelect(pigmentSelectEl);
+      populatePigmentSelect(pigment2SelectEl);
+
+      const pigmentKeys = Object.keys(PIGMENTS);
+      if (pigmentKeys.length > 1) pigment2SelectEl.value = pigmentKeys[1];
+
+      const WHITE_CEMENT = { r: 232, g: 228, b: 218 };
+      const GREY_CEMENT = { r: 138, g: 134, b: 130 };
+      const SAND_COLOR = { r: 210, g: 195, b: 162 };
+
+      function lerp(a, b, t) {
+        const cl = (v) => Math.max(0, Math.min(255, Math.round(v)));
+        return {
+          r: cl(a.r + (b.r - a.r) * t),
+          g: cl(a.g + (b.g - a.g) * t),
+          b: cl(a.b + (b.b - a.b) * t),
+        };
+      }
+
+      function toHex({ r, g, b }) {
+        return '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('');
+      }
+
+      function toCSS({ r, g, b }) {
+        return `rgb(${r},${g},${b})`;
+      }
+
+      function luminance({ r, g, b }) {
+        return 0.299 * r + 0.587 * g + 0.114 * b;
+      }
+
+      function blendPigments(pig1, pct1, pig2, pct2) {
+        const total = pct1 + pct2;
+        if (total === 0) return { color: pig1, totalPct: 0 };
+        const t = pct2 / total;
+        return { color: lerp(pig1, pig2, t), totalPct: Math.min(10, total) };
+      }
+
+      function computeColor({
+        cementType,
+        useSand,
+        pigmentEnabled,
+        pigmentKey,
+        pigmentPercent,
+        pigment2Enabled,
+        pigment2Key,
+        pigment2Percent,
+        wet,
+      }) {
+        let base = cementType === 'white' ? { ...WHITE_CEMENT } : { ...GREY_CEMENT };
+
+        if (useSand) base = lerp(base, SAND_COLOR, 0.45);
+
+        if (pigmentEnabled && pigmentPercent > 0) {
+          const pig1 = PIGMENTS[pigmentKey] || PIGMENTS[pigmentKeys[0]];
+
+          let effectivePigment = pig1;
+          let totalPct = pigmentPercent;
+
+          if (pigment2Enabled && pigment2Percent > 0) {
+            const pig2 = PIGMENTS[pigment2Key] || PIGMENTS[pigmentKeys[0]];
+            const blended = blendPigments(pig1, pigmentPercent, pig2, pigment2Percent);
+            effectivePigment = blended.color;
+            totalPct = blended.totalPct;
+          }
+
+          const maxInf = cementType === 'white' ? 0.62 : 0.38;
+          const influence = (totalPct / 10) * maxInf;
+          base = lerp(base, effectivePigment, influence);
+        }
+
+        if (wet)
+          base = {
+            r: Math.round(base.r * 0.74),
+            g: Math.round(base.g * 0.74),
+            b: Math.round(base.b * 0.74),
+          };
+        return base;
+      }
+
+      const cementSel = document.getElementById('cement-type');
+      const useSandChk = document.getElementById('use-sand');
+      const sandHint = document.getElementById('sand-hint');
+      const usePigChk = document.getElementById('use-pigment');
+      const pigFields = document.getElementById('pigment-fields');
+      const pigSel = pigmentSelectEl;
+      const pigDot = document.getElementById('pigment-dot');
+      const pigPctInput = document.getElementById('pigment-pct');
+      const gradStrip = document.getElementById('gradient-strip');
+      const usePig2Chk = document.getElementById('use-pigment-2');
+      const pig2Fields = document.getElementById('pigment-2-fields');
+      const pig2Sel = pigment2SelectEl;
+      const pig2Dot = document.getElementById('pigment-2-dot');
+      const pig2PctInput = document.getElementById('pigment-2-pct');
+      const mixSwatch = document.getElementById('mix-swatch');
+      const mixLabel = document.getElementById('mix-label');
+      const swatchDry = document.getElementById('swatch-dry');
+      const swatchWet = document.getElementById('swatch-wet');
+      const hexDry = document.getElementById('hex-dry');
+      const hexWet = document.getElementById('hex-wet');
+      const callout = document.getElementById('callout');
+      const rangeSection = document.getElementById('range-section');
+      const rangeStrip = document.getElementById('range-strip');
+      const rangeTitle = document.getElementById('range-title');
+      const btnExport = document.getElementById('btn-export');
+      const btnImport = document.getElementById('btn-import');
+      const fileImport = document.getElementById('file-import');
+
+      function render() {
+        const cementType = cementSel.value;
+        const useSand = useSandChk.checked;
+        const pigmentEnabled = usePigChk.checked;
+        const pigmentKey = pigSel.value;
+        const pigmentPercent = Math.max(0, Math.min(10, parseFloat(pigPctInput.value) || 0));
+        const pigment2Enabled = usePig2Chk.checked;
+        const pigment2Key = pig2Sel.value;
+        const pigment2Percent = Math.max(0, Math.min(10, parseFloat(pig2PctInput.value) || 0));
+        const pigment = PIGMENTS[pigmentKey];
+        const pigment2 = PIGMENTS[pigment2Key];
+
+        sandHint.textContent = useSand ? '1:1 cement : sand' : 'Cement-only paste';
+        pigFields.classList.toggle('hidden', !pigmentEnabled);
+        pig2Fields.classList.toggle('hidden', !pigment2Enabled);
+
+        pigDot.style.background = toCSS(pigment);
+        pig2Dot.style.background = toCSS(pigment2);
+
+        if (pigment2Enabled && pigment2Percent > 0 && pigmentPercent > 0) {
+          const { color, totalPct } = blendPigments(pigment, pigmentPercent, pigment2, pigment2Percent);
+          mixSwatch.style.background = toCSS(color);
+          const capped = totalPct < pigmentPercent + pigment2Percent ? ' (capped at 10%)' : '';
+          mixLabel.textContent = `Blend: ${pigment.label} + ${pigment2.label} = ${toHex(color)}${capped}`;
+        } else {
+          mixSwatch.style.background = toCSS(pigment);
+          mixLabel.textContent = 'Blended pigment preview';
+        }
+
+        const sharedParams = {
+          cementType,
+          useSand,
+          pigmentEnabled,
+          pigmentKey,
+          pigmentPercent,
+          pigment2Enabled,
+          pigment2Key,
+          pigment2Percent,
+        };
+
+        const dry = computeColor({ ...sharedParams, wet: false });
+        const wet = computeColor({ ...sharedParams, wet: true });
+
+        swatchDry.style.background = toCSS(dry);
+        swatchWet.style.background = toCSS(wet);
+
+        const onDry = luminance(dry) > 140 ? '#111' : '#f0f0f0';
+        const onWet = luminance(wet) > 140 ? '#111' : '#f0f0f0';
+        hexDry.style.color = onDry;
+        hexWet.style.color = onWet;
+        hexDry.textContent = toHex(dry);
+        hexWet.textContent = toHex(wet);
+
+        let note,
+          isWarn = false;
+        if (!pigmentEnabled) {
+          note =
+            cementType === 'white'
+              ? 'Clean off-white base; pigments read close to the swatch.'
+              : 'Grey Portland mutes pigment; expect earthy tones.';
+        } else if (cementType === 'grey') {
+          note = 'Grey base desaturates the pigment. Expect earthy, natural tones.';
+          isWarn = true;
+        } else {
+          note = 'White base preserves pigment color for vivid, clean results.';
+        }
+        callout.textContent = isWarn
+          ? note + ' Switch to White Portland for more vivid colors.'
+          : note;
+        callout.className = 'callout' + (isWarn ? ' warn' : '');
+
+        gradStrip.innerHTML = '';
+        for (let pct = 1; pct <= 10; pct++) {
+          const c = computeColor({
+            cementType,
+            useSand,
+            pigmentEnabled: true,
+            pigmentKey,
+            pigmentPercent: pct,
+            pigment2Enabled,
+            pigment2Key,
+            pigment2Percent: pigment2Enabled ? (pct * pigment2Percent) / Math.max(1, pigmentPercent) : 0,
+            wet: false,
+          });
+          const seg = document.createElement('div');
+          seg.className = 'strip-seg';
+          seg.style.background = toCSS(c);
+          if (Math.round(pigmentPercent) === pct) {
+            seg.style.outline = '2px solid var(--accent)';
+            seg.style.outlineOffset = '-1px';
+          }
+          gradStrip.appendChild(seg);
+        }
+
+        rangeSection.style.display = pigmentEnabled ? 'block' : 'none';
+        if (pigmentEnabled) {
+          const cName = cementType === 'white' ? 'white' : 'grey';
+          const sName = useSand ? ' + sand' : '';
+          const mixName = pigment2Enabled ? ` + ${pigment2.label}` : '';
+          rangeTitle.textContent = `${pigment.label}${mixName} — ${cName} cement${sName}`;
+
+          rangeStrip.innerHTML = '';
+          for (let pct = 0; pct <= 10; pct++) {
+            const c = computeColor({
+              cementType,
+              useSand,
+              pigmentEnabled: pct > 0,
+              pigmentKey,
+              pigmentPercent: pct,
+              pigment2Enabled,
+              pigment2Key,
+              pigment2Percent:
+                pct > 0 && pigment2Enabled
+                  ? (pct * pigment2Percent) / Math.max(1, pigmentPercent)
+                  : 0,
+              wet: false,
+            });
+            const col = document.createElement('div');
+            const swatch = document.createElement('div');
+            const label = document.createElement('span');
+            col.className = 'range-col';
+            swatch.className =
+              'range-swatch' + (pct === Math.round(pigmentPercent) ? ' active' : '');
+            swatch.style.background = toCSS(c);
+            label.className = 'range-pct';
+            label.textContent = pct + '%';
+            col.appendChild(swatch);
+            col.appendChild(label);
+            rangeStrip.appendChild(col);
+          }
+        }
+      }
+
+      function buildProfile() {
+        return {
+          cementType: cementSel.value,
+          useSand: useSandChk.checked,
+          pigmentEnabled: usePigChk.checked,
+          pigmentKey: pigSel.value,
+          pigmentPercent: parseFloat(pigPctInput.value) || 5,
+          pigment2Enabled: usePig2Chk.checked,
+          pigment2Key: pig2Sel.value,
+          pigment2Percent: parseFloat(pig2PctInput.value) || 3,
+        };
+      }
+
+      function applyProfile(p) {
+        if (p.cementType !== undefined) cementSel.value = p.cementType;
+        if (p.useSand !== undefined) useSandChk.checked = p.useSand;
+        if (p.pigmentEnabled !== undefined) usePigChk.checked = p.pigmentEnabled;
+        if (p.pigmentKey !== undefined && PIGMENTS[p.pigmentKey]) pigSel.value = p.pigmentKey;
+        if (p.pigmentPercent !== undefined) pigPctInput.value = p.pigmentPercent;
+        if (p.pigment2Enabled !== undefined) usePig2Chk.checked = p.pigment2Enabled;
+        if (p.pigment2Key !== undefined && PIGMENTS[p.pigment2Key]) pig2Sel.value = p.pigment2Key;
+        if (p.pigment2Percent !== undefined) pig2PctInput.value = p.pigment2Percent;
+        render();
+      }
+
+      btnExport.addEventListener('click', () => {
+        const profile = buildProfile();
+        const dry = computeColor({ ...profile, wet: false });
+        const meta = { ...profile, _hexDry: toHex(dry), _version: 1 };
+        const blob = new Blob([JSON.stringify(meta, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `concrete-color-${profile.cementType}-${toHex(dry).slice(1)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+
+      btnImport.addEventListener('click', () => fileImport.click());
+
+      fileImport.addEventListener('change', () => {
+        const file = fileImport.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const profile = JSON.parse(e.target.result);
+            applyProfile(profile);
+          } catch {
+            alert('Could not read the profile file. Make sure it is a valid JSON export.');
+          }
+        };
+        reader.readAsText(file);
+        fileImport.value = '';
+      });
+
+      [cementSel, useSandChk, usePigChk, pigSel, pigPctInput,
+       usePig2Chk, pig2Sel, pig2PctInput].forEach((el) => {
+        el.addEventListener('change', render);
+        el.addEventListener('input', render);
+      });
+
+      render();
+    </script>
+  </body>
+</html>

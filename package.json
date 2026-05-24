@@ -1,16 +1,38 @@
 {
   "name": "concrete-calculator",
   "version": "1.0.0",
-  "description": "A calculator for concrete mix proportions for detailed statues and decorative pieces",
+  "description": "CLI calculator for concrete mix proportions for detailed statues and decorative pieces",
   "main": "index.js",
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "scripts": {
     "start": "node index.js",
     "dev": "node index.js",
-    "test": "node smoke-test.js"
+    "test": "node --test smoke-test.js",
+    "build:simulator": "node scripts/build-simulator.js",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "inquirer": "^9.2.0"
   },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.4.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.6.0",
+    "prettier": "^3.8.3"
+  },
+  "keywords": [
+    "concrete",
+    "calculator",
+    "mix",
+    "cement",
+    "statues",
+    "decorative"
+  ],
   "license": "MIT",
   "type": "module"
 }

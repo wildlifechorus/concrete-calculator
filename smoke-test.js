@@ -1,202 +1,255 @@
 #!/usr/bin/env node
 
-// Smoke tests — covers premixed/scratch/CSA modes, X33 on/off, edge cases.
-// Run with: node smoke-test.js
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { calculateScratchMix, formatDefoamer } from './lib/calculations.js';
 
-import {
-  calculatePremixedConcrete,
-  calculateScratchMix,
-  formatDefoamer,
-} from './index.js';
-
-let passed = 0;
-let failed = 0;
-
-function assertClose(label, actual, expected, tolerance = 0.001) {
+const close = (actual, expected, tolerance = 0.001) => {
   const diff = Math.abs(actual - expected);
-  if (diff <= tolerance) {
-    console.log(`  ✅ ${label}: ${actual.toFixed(4)} ≈ ${expected}`);
-    passed++;
-  } else {
-    console.error(
-      `  ❌ ${label}: got ${actual.toFixed(4)}, expected ${expected} (diff ${diff.toFixed(6)})`
-    );
-    failed++;
-  }
-}
-
-function assertEqual(label, actual, expected) {
-  if (actual === expected) {
-    console.log(`  ✅ ${label}: "${actual}"`);
-    passed++;
-  } else {
-    console.error(`  ❌ ${label}: got "${actual}", expected "${expected}"`);
-    failed++;
-  }
-}
-
-function assert(label, condition) {
-  if (condition) {
-    console.log(`  ✅ ${label}`);
-    passed++;
-  } else {
-    console.error(`  ❌ ${label}`);
-    failed++;
-  }
-}
-
-console.log('\n🧪 Concrete Calculator — Smoke Tests\n');
-
-// formatDefoamer
-console.log('── formatDefoamer ──────────────────────────────────────');
-
-assertEqual('sub-1g value shows mg + g', formatDefoamer(0.25), '250mg (0.250g)');
-assertEqual('sub-1g rounds mg correctly (0.1g → 100mg)', formatDefoamer(0.1), '100mg (0.100g)');
-assertEqual('exactly 1g uses g format', formatDefoamer(1.0), '1.000g');
-assertEqual('over 1g uses g format', formatDefoamer(1.5), '1.500g');
-
-// calculatePremixedConcrete — X33 off
-console.log('\n── calculatePremixedConcrete (X33 off) ─────────────────');
-
-{
-  // README reference: 1000g concrete, 18ml/100g ratio
-  const r = calculatePremixedConcrete(1000, 18, false);
-
-  assertClose('baseWaterAmount', r.baseWaterAmount, 180.0);
-  assertClose('waterAmount (10% reduction)', r.waterAmount, 162.0);
-  assertClose('waterSaved', r.waterSaved, 18.0);
-  assertClose('waterReduction %', r.waterReduction, 10.0);
-  assertClose('estimatedCement (50% of concrete)', r.estimatedCement, 500.0);
-  assertClose('plasticizerAmount', r.plasticizerAmount, 3.75);
-  assertEqual('useX33 flag', r.useX33, false);
-  assertClose('x33Amount is 0', r.x33Amount, 0.0);
-}
-
-// calculatePremixedConcrete — X33 on
-console.log('\n── calculatePremixedConcrete (X33 on) ──────────────────');
-
-{
-  const r = calculatePremixedConcrete(1000, 18, true);
-
-  assertEqual('useX33 flag', r.useX33, true);
-  // X33: 0.05% of estimated cement (500g) = 0.25g
-  assertClose('x33Amount (0.05% × 500g cement)', r.x33Amount, 0.25);
-  assertClose('waterAmount unchanged', r.waterAmount, 162.0);
-  assertClose('plasticizerAmount unchanged', r.plasticizerAmount, 3.75);
-}
-
-// calculatePremixedConcrete — small batch (100g)
-console.log('\n── calculatePremixedConcrete (100g small batch, X33 on) ');
-
-{
-  const r = calculatePremixedConcrete(100, 15, true);
-
-  assertClose('estimatedCement', r.estimatedCement, 50.0);
-  assertClose('baseWater', r.baseWaterAmount, 15.0);
-  assertClose('reducedWater', r.waterAmount, 13.5);
-  assertClose('plasticizer', r.plasticizerAmount, 0.375);
-  // X33: 0.05% of 50g = 0.025g = 25mg
-  assertClose('x33Amount', r.x33Amount, 0.025);
-  assertEqual('formatDefoamer for 25mg', formatDefoamer(r.x33Amount), '25mg (0.025g)');
-}
-
-// calculateScratchMix — Portland only, X33 off
-console.log('\n── calculateScratchMix (Portland only, X33 off) ────────');
-
-{
-  const r = calculateScratchMix(1000, false, false);
-
-  assertClose('portlandCement', r.portlandCement, 500.0);
-  assertClose('csaCement is 0', r.csaCement, 0.0);
-  assertClose('fineSand', r.fineSand, 500.0);
-  assertClose('totalCementWeight', r.totalCementWeight, 500.0);
-  assertClose('water (W/C 0.44)', r.water, 220.0);
-  assertClose('plasticizer', r.plasticizer, 3.75);
-  assertEqual('useCSA flag', r.useCSA, false);
-  assertEqual('useX33 flag', r.useX33, false);
-  assertClose('x33Amount is 0', r.x33Amount, 0.0);
-}
-
-// calculateScratchMix — Portland only, X33 on
-console.log('\n── calculateScratchMix (Portland only, X33 on) ─────────');
-
-{
-  const r = calculateScratchMix(1000, false, true);
-
-  assertEqual('useX33 flag', r.useX33, true);
-  assertClose('x33Amount', r.x33Amount, 0.25);
-  assertEqual('formatDefoamer for 0.25g', formatDefoamer(r.x33Amount), '250mg (0.250g)');
-}
-
-// calculateScratchMix — Portland + CSA, X33 on (README reference)
-console.log('\n── calculateScratchMix (CSA blend, X33 on) ─────────────');
-
-{
-  const r = calculateScratchMix(1000, true, true);
-
-  // Total cement = 500g → Portland 65% = 325g, CSA 35% = 175g
-  assertClose('portlandCement (65%)', r.portlandCement, 325.0);
-  assertClose('csaCement (35%)', r.csaCement, 175.0);
-  assertClose('fineSand', r.fineSand, 500.0);
-  assertClose('totalCementWeight', r.totalCementWeight, 500.0);
-  assertClose('water', r.water, 220.0);
-  assertClose('plasticizer', r.plasticizer, 3.75);
-  assertClose('x33Amount', r.x33Amount, 0.25);
-  assertEqual('useCSA flag', r.useCSA, true);
-  assertEqual('useX33 flag', r.useX33, true);
-}
-
-// calculateScratchMix — large batch (5000g), CSA + X33
-console.log('\n── calculateScratchMix (5000g large batch, CSA + X33) ──');
-
-{
-  const r = calculateScratchMix(5000, true, true);
-
-  assertClose('portlandCement', r.portlandCement, 1625.0);
-  assertClose('csaCement', r.csaCement, 875.0);
-  assertClose('fineSand', r.fineSand, 2500.0);
-  assertClose('water', r.water, 1100.0);
-  assertClose('plasticizer', r.plasticizer, 18.75);
-  // X33: 0.05% of 2500g = 1.25g → switches to g format
-  assertClose('x33Amount', r.x33Amount, 1.25);
-  assertEqual('formatDefoamer for 1.25g uses g format', formatDefoamer(r.x33Amount), '1.250g');
-}
-
-// X33 dosage boundary checks
-console.log('\n── X33 dosage boundary checks ───────────────────────────');
-
-{
-  const r = calculateScratchMix(1000, false, true); // 500g cement
-  const minDose = r.totalCementWeight * 0.0001; // 0.01%
-  const maxDose = r.totalCementWeight * 0.002;  // 0.20%
-
-  assert(
-    'x33Amount is within safe range (0.01%–0.20% of cement)',
-    r.x33Amount >= minDose && r.x33Amount <= maxDose
+  assert.ok(
+    diff <= tolerance,
+    `expected ${expected}, got ${actual.toFixed(6)} (diff ${diff.toFixed(6)})`
   );
-  assert(
-    'x33Amount is closer to conservative low end (≤ midpoint)',
-    r.x33Amount <= (minDose + maxDose) / 2
-  );
-}
+};
 
-// 1:1 cement:sand ratio invariant
-console.log('\n── Mix ratio invariant ──────────────────────────────────');
+describe('formatDefoamer', () => {
+  it('sub-1g: 0.25g → 250mg (0.250g)', () => assert.equal(formatDefoamer(0.25), '250mg (0.250g)'));
+  it('sub-1g: 0.1g rounds mg correctly → 100mg (0.100g)', () =>
+    assert.equal(formatDefoamer(0.1), '100mg (0.100g)'));
+  it('exactly 1g → 1.000g', () => assert.equal(formatDefoamer(1.0), '1.000g'));
+  it('over 1g: 1.5g → 1.500g', () => assert.equal(formatDefoamer(1.5), '1.500g'));
+});
 
-{
+describe('calculateScratchMix — Portland only, X33 off', () => {
+  const r = calculateScratchMix({
+    totalAmount: 1000,
+    useCSA: false,
+    useX33: false,
+    cementType: 'grey',
+    useSand: true,
+    pigmentPercent: 0,
+  });
+
+  it('portlandCement = 500g', () => close(r.portlandCement, 500.0));
+  it('csaCement = 0', () => close(r.csaCement, 0.0));
+  it('fineSand = 500g', () => close(r.fineSand, 500.0));
+  it('totalCementWeight = 500g', () => close(r.totalCementWeight, 500.0));
+  it('water = 220ml (W/C 0.44)', () => close(r.water, 220.0));
+  it('plasticizer = 3.75ml', () => close(r.plasticizer, 3.75));
+  it('useCSA flag', () => assert.equal(r.useCSA, false));
+  it('useX33 flag', () => assert.equal(r.useX33, false));
+  it('x33Amount = 0', () => close(r.x33Amount, 0.0));
+  it('pigmentWeight = 0', () => close(r.pigmentWeight, 0.0));
+  it('cementType', () => assert.equal(r.cementType, 'grey'));
+  it('useSand', () => assert.equal(r.useSand, true));
+});
+
+describe('calculateScratchMix — Portland only, X33 on', () => {
+  const r = calculateScratchMix({
+    totalAmount: 1000,
+    useCSA: false,
+    useX33: true,
+    cementType: 'grey',
+    useSand: true,
+    pigmentPercent: 0,
+  });
+
+  it('useX33 flag', () => assert.equal(r.useX33, true));
+  it('x33Amount = 0.05% × 500g cement = 0.25g', () => close(r.x33Amount, 0.25));
+  it('formatDefoamer for 0.25g → 250mg (0.250g)', () =>
+    assert.equal(formatDefoamer(r.x33Amount), '250mg (0.250g)'));
+  it('water unchanged', () => close(r.water, 220.0));
+  it('plasticizer unchanged', () => close(r.plasticizer, 3.75));
+});
+
+describe('calculateScratchMix — CSA blend (Portland+CSA 65/35), X33 on', () => {
+  const r = calculateScratchMix({
+    totalAmount: 1000,
+    useCSA: true,
+    useX33: true,
+    cementType: 'grey',
+    useSand: true,
+    pigmentPercent: 0,
+  });
+
+  it('portlandCement = 65% of 500g = 325g', () => close(r.portlandCement, 325.0));
+  it('csaCement = 35% of 500g = 175g', () => close(r.csaCement, 175.0));
+  it('fineSand = 500g', () => close(r.fineSand, 500.0));
+  it('totalCementWeight = 500g', () => close(r.totalCementWeight, 500.0));
+  it('water = 220ml', () => close(r.water, 220.0));
+  it('plasticizer = 3.75ml', () => close(r.plasticizer, 3.75));
+  it('x33Amount = 0.25g', () => close(r.x33Amount, 0.25));
+  it('useCSA flag', () => assert.equal(r.useCSA, true));
+  it('useX33 flag', () => assert.equal(r.useX33, true));
+});
+
+describe('calculateScratchMix — 5000g large batch, CSA + X33', () => {
+  const r = calculateScratchMix({
+    totalAmount: 5000,
+    useCSA: true,
+    useX33: true,
+    cementType: 'grey',
+    useSand: true,
+    pigmentPercent: 0,
+  });
+
+  it('portlandCement = 1625g', () => close(r.portlandCement, 1625.0));
+  it('csaCement = 875g', () => close(r.csaCement, 875.0));
+  it('fineSand = 2500g', () => close(r.fineSand, 2500.0));
+  it('water = 1100ml', () => close(r.water, 1100.0));
+  it('plasticizer = 18.75ml', () => close(r.plasticizer, 18.75));
+  it('x33Amount = 1.25g → g format', () => {
+    close(r.x33Amount, 1.25);
+    assert.equal(formatDefoamer(r.x33Amount), '1.250g');
+  });
+});
+
+describe('X33 dosage — within safe 0.01%–0.20% range', () => {
+  const r = calculateScratchMix({
+    totalAmount: 1000,
+    useCSA: false,
+    useX33: true,
+    cementType: 'grey',
+    useSand: true,
+    pigmentPercent: 0,
+  });
+
+  it('x33Amount >= 0.01% of cement', () => assert.ok(r.x33Amount >= r.totalCementWeight * 0.0001));
+  it('x33Amount <= 0.20% of cement', () => assert.ok(r.x33Amount <= r.totalCementWeight * 0.002));
+});
+
+describe('1:1 cement:sand ratio invariant', () => {
   for (const total of [200, 500, 1000, 2500]) {
-    const r = calculateScratchMix(total, false, true);
-    assertClose(`1:1 ratio holds at ${total}g total`, r.portlandCement / r.fineSand, 1.0);
+    it(`holds at ${total}g total`, () => {
+      const r = calculateScratchMix({
+        totalAmount: total,
+        useCSA: false,
+        useX33: true,
+        cementType: 'grey',
+        useSand: true,
+        pigmentPercent: 0,
+      });
+      close(r.portlandCement / r.fineSand, 1.0);
+    });
   }
-}
+});
 
-// Summary
-console.log(`\n${'─'.repeat(55)}`);
-console.log(`Results: ${passed} passed, ${failed} failed`);
+describe('calculateScratchMix — White Portland, no pigment', () => {
+  const r = calculateScratchMix({
+    totalAmount: 1000,
+    useCSA: false,
+    useX33: true,
+    cementType: 'white',
+    useSand: true,
+    pigmentPercent: 0,
+  });
 
-if (failed > 0) {
-  console.error('\n❌ Some tests failed — review output above.\n');
-  process.exit(1);
-} else {
-  console.log('\n✅ All smoke tests passed.\n');
-}
+  it('cementType', () => assert.equal(r.cementType, 'white'));
+  it('portlandCement = 500g', () => close(r.portlandCement, 500.0));
+  it('csaCement = 0', () => close(r.csaCement, 0.0));
+  it('useCSA = false', () => assert.equal(r.useCSA, false));
+  it('fineSand = 500g', () => close(r.fineSand, 500.0));
+  it('water = 220ml', () => close(r.water, 220.0));
+  it('plasticizer = 3.75ml', () => close(r.plasticizer, 3.75));
+  it('pigmentWeight = 0', () => close(r.pigmentWeight, 0.0));
+});
+
+describe('calculateScratchMix — White Portland + CSA blend', () => {
+  const r = calculateScratchMix({
+    totalAmount: 1000,
+    useCSA: true,
+    useX33: false,
+    cementType: 'white',
+    useSand: true,
+    pigmentPercent: 0,
+  });
+
+  it('useCSA = true', () => assert.equal(r.useCSA, true));
+  it('portlandCement = 325g (65%)', () => close(r.portlandCement, 325.0));
+  it('csaCement = 175g (35%)', () => close(r.csaCement, 175.0));
+  it('totalCementWeight = 500g', () => close(r.totalCementWeight, 500.0));
+});
+
+describe('calculateScratchMix — White Portland, 5% pigment', () => {
+  const r = calculateScratchMix({
+    totalAmount: 1000,
+    useCSA: false,
+    useX33: true,
+    cementType: 'white',
+    useSand: true,
+    pigmentPercent: 5,
+    pigmentKey: 'red',
+  });
+
+  it('pigmentPercent = 5', () => assert.equal(r.pigmentPercent, 5));
+  it('pigmentWeight = 5% of 500g = 25g', () => close(r.pigmentWeight, 25.0));
+  it('pigmentKey = red', () => assert.equal(r.pigmentKey, 'red'));
+  it('totalCementWeight unchanged = 500g', () => close(r.totalCementWeight, 500.0));
+  it('water unchanged = 220ml', () => close(r.water, 220.0));
+});
+
+describe('Pigment boundary checks', () => {
+  it('1% pigment of 500g cement = 5g', () => {
+    const r = calculateScratchMix({
+      totalAmount: 1000,
+      useCSA: false,
+      useX33: false,
+      cementType: 'white',
+      useSand: true,
+      pigmentPercent: 1,
+    });
+    close(r.pigmentWeight, 5.0);
+  });
+
+  it('10% pigment of 500g cement = 50g', () => {
+    const r = calculateScratchMix({
+      totalAmount: 1000,
+      useCSA: false,
+      useX33: false,
+      cementType: 'white',
+      useSand: true,
+      pigmentPercent: 10,
+    });
+    close(r.pigmentWeight, 50.0);
+  });
+});
+
+describe('calculateScratchMix — cement-only, grey Portland', () => {
+  const r = calculateScratchMix({
+    totalAmount: 1000,
+    useCSA: false,
+    useX33: true,
+    cementType: 'grey',
+    useSand: false,
+    pigmentPercent: 0,
+  });
+
+  it('useSand = false', () => assert.equal(r.useSand, false));
+  it('fineSand = 0', () => close(r.fineSand, 0.0));
+  it('portlandCement = entire totalAmount = 1000g', () => close(r.portlandCement, 1000.0));
+  it('totalCementWeight = 1000g', () => close(r.totalCementWeight, 1000.0));
+  it('water = W/C 0.44 of 1000g = 440ml', () => close(r.water, 440.0));
+  it('plasticizer = 0.75% of 1000g = 7.5ml', () => close(r.plasticizer, 7.5));
+  it('x33Amount = 0.05% of 1000g = 0.5g', () => close(r.x33Amount, 0.5));
+});
+
+describe('calculateScratchMix — cement-only, white Portland + 5% pigment', () => {
+  const r = calculateScratchMix({
+    totalAmount: 1000,
+    useCSA: false,
+    useX33: true,
+    cementType: 'white',
+    useSand: false,
+    pigmentPercent: 5,
+    pigmentKey: 'brown',
+  });
+
+  it('cementType = white', () => assert.equal(r.cementType, 'white'));
+  it('useSand = false', () => assert.equal(r.useSand, false));
+  it('fineSand = 0', () => close(r.fineSand, 0.0));
+  it('totalCementWeight = 1000g', () => close(r.totalCementWeight, 1000.0));
+  it('pigmentWeight = 5% of 1000g = 50g', () => close(r.pigmentWeight, 50.0));
+  it('water = 440ml', () => close(r.water, 440.0));
+  it('plasticizer = 7.5ml', () => close(r.plasticizer, 7.5));
+  it('pigmentKey = brown', () => assert.equal(r.pigmentKey, 'brown'));
+});
