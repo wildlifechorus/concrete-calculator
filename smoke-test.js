@@ -62,7 +62,7 @@ describe('calculateScratchMix — Portland only, X33 on', () => {
   it('plasticizer unchanged', () => close(r.plasticizer, 3.75));
 });
 
-describe('calculateScratchMix — CSA blend (Portland+CSA 65/35), X33 on', () => {
+describe('calculateScratchMix — CSA blend (Portland+CSA 50/50), X33 on', () => {
   const r = calculateScratchMix({
     totalAmount: 1000,
     useCSA: true,
@@ -72,8 +72,8 @@ describe('calculateScratchMix — CSA blend (Portland+CSA 65/35), X33 on', () =>
     pigmentPercent: 0,
   });
 
-  it('portlandCement = 65% of 500g = 325g', () => close(r.portlandCement, 325.0));
-  it('csaCement = 35% of 500g = 175g', () => close(r.csaCement, 175.0));
+  it('portlandCement = 50% of 500g = 250g', () => close(r.portlandCement, 250.0));
+  it('csaCement = 50% of 500g = 250g', () => close(r.csaCement, 250.0));
   it('fineSand = 500g', () => close(r.fineSand, 500.0));
   it('totalCementWeight = 500g', () => close(r.totalCementWeight, 500.0));
   it('water = 220ml', () => close(r.water, 220.0));
@@ -93,8 +93,8 @@ describe('calculateScratchMix — 5000g large batch, CSA + X33', () => {
     pigmentPercent: 0,
   });
 
-  it('portlandCement = 1625g', () => close(r.portlandCement, 1625.0));
-  it('csaCement = 875g', () => close(r.csaCement, 875.0));
+  it('portlandCement = 1250g', () => close(r.portlandCement, 1250.0));
+  it('csaCement = 1250g', () => close(r.csaCement, 1250.0));
   it('fineSand = 2500g', () => close(r.fineSand, 2500.0));
   it('water = 1100ml', () => close(r.water, 1100.0));
   it('plasticizer = 18.75ml', () => close(r.plasticizer, 18.75));
@@ -165,8 +165,8 @@ describe('calculateScratchMix — White Portland + CSA blend', () => {
   });
 
   it('useCSA = true', () => assert.equal(r.useCSA, true));
-  it('portlandCement = 325g (65%)', () => close(r.portlandCement, 325.0));
-  it('csaCement = 175g (35%)', () => close(r.csaCement, 175.0));
+  it('portlandCement = 250g (50%)', () => close(r.portlandCement, 250.0));
+  it('csaCement = 250g (50%)', () => close(r.csaCement, 250.0));
   it('totalCementWeight = 500g', () => close(r.totalCementWeight, 500.0));
 });
 

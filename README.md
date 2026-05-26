@@ -1,6 +1,6 @@
 # 🏗️ Concrete Calculator for Detailed Statues & Decorative Pieces
 
-A Node.js CLI that calculates precise concrete mix proportions for detailed statues and decorative work. Customized for **1:1 cement:sand ratios** (no aggregate) with **Level+ Concrete Plasticizer RM38**, **CSA cement** for maximum 2-hour hardening time, **X33 Entschäumer** defoamer for bubble-free surface finish, and **iron oxide pigments** for pre-mix color previewing.
+A Node.js CLI that calculates precise concrete mix proportions for detailed statues and decorative work. Customized for **1:1 cement:sand ratios** (no aggregate) with **Level+ Concrete Plasticizer RM38**, **CSA cement** for ~1-hour demold time, **X33 Entschäumer** defoamer for bubble-free surface finish, and **iron oxide pigments** for pre-mix color previewing.
 
 ## 🚀 Features
 
@@ -46,8 +46,8 @@ A Node.js CLI that calculates precise concrete mix proportions for detailed stat
 ### CSA Cement
 
 - **[BUZZI NEXT BASE CSA Cement](https://www.moertelshop.com/buy-csa-cement-grey-cheaply-5.html)**, Grey CSA cement for rapid setting
-- Use 30-70% addition to Portland cement (calculator uses 35%)
-- Provides maximum 2-hour hardening time for detailed work
+- Use 30-70% addition to Portland cement (calculator uses 50%)
+- Targets ~1-hour demold time for fast production cycling
 - **Grey Portland recommended**, combining with white Portland is permitted but grey CSA will visibly shift the color
 - **Note**: CSA cement solidifies within minutes in pure form, always mix with Portland cement as shown in calculator
 
@@ -95,7 +95,7 @@ yarn start
 
 - **Mix ratio**: 1:1 (cement:sand) or cement-only paste, no aggregate for fine detailed work
 - **Water-cement ratio**: 0.44 (flow for fine mold work without excess shrinkage)
-- **CSA cement**: 35% of total cement when selected (grey Portland recommended; permitted with white)
+- **CSA cement**: 50% of total cement when selected (grey Portland recommended; permitted with white)
 - **Level+ Plasticizer**: 0.75% of total cement weight
 - **X33 Defoamer**: 0.05% of total cement weight (dry-blended before water addition)
 - **Pigment**: 1–10% of cement weight, added as dry ingredient (both grey and white Portland)
@@ -108,7 +108,7 @@ yarn start
 2. Enter the total dry mix desired (in grams)
 3. Choose cement type: Grey Portland or White Portland
 4. Choose whether to include fine sand (uncheck for cement-only paste)
-5. Choose whether to use CSA cement (2-hour hardening)
+5. Choose whether to use CSA cement (~1hr demold)
 6. Choose whether to include X33 defoamer
 7. Optionally add pigment, pick a product and dial in the percentage (1–10%)
 8. Get complete breakdown of all components with mixing order and curing times
@@ -128,8 +128,8 @@ yarn start
 
 ```
 Dry mix total: 1000g
-Portland: 325.0g
-CSA: 175.0g
+Portland: 250.0g
+CSA: 250.0g
 Sand: 500.0g
 Water: 220.0ml
 Level+ Plasticizer: 3.8ml
@@ -144,11 +144,11 @@ Mixing Order:
   6. Mix thoroughly for 2–3 minutes
   ⚠️  Do not exceed X33 dosage, overdosing weakens surface quality
 
-📝 1:1 ratio | W/C: 0.44 | CSA blend: 2hr max hardening
+📝 1:1 ratio | W/C: 0.44 | CSA blend: ~1hr demold
 
 ⏱️  Curing Times:
   Initial set:    ~15–30 minutes, work quickly once mixed
-  Hard / demold:  ~1–2 hours
+  Hard / demold:  ~1 hour
   80% strength:   ~24 hours
   Full cure:      28 days
 ```
@@ -241,9 +241,9 @@ Concrete density: 0.0024 g/mm³
 - Products: SC Pigments® Pardo 4660 (brown), SC Pigments® Negro 55 (black), QUARKZMAN Ruby Red Mesh 500, QUARKZMAN Moss Green Mesh 325
 - The CLI lets you select a product, it is shown in the results and mixing order output
 
-### CSA Cement Benefits (35% blend)
+### CSA Cement Benefits (50% blend)
 
-- **Maximum 2-hour hardening time** guaranteed
+- **~1-hour demold time** for fast production cycling
 - Rapid setting ideal for detailed mold work
 - Early strength development for quick demolding
 - **Grey Portland recommended**, grey CSA is not visually compatible with white Portland (color shift), but is permitted if the color shift is acceptable
@@ -275,7 +275,7 @@ Concrete density: 0.0024 g/mm³
 3. **Mix Level+ Plasticizer with water before adding to concrete**
 4. **Add water gradually to achieve desired consistency**
 5. **1:1 cement:sand ratio, NO aggregate for smooth fine finish** (or cement-only paste for experimental work)
-6. **CSA cement blend ensures maximum 2-hour hardening**
+6. **CSA cement blend targets ~1-hour demold for fast production**
 7. **Mixing grey CSA with white Portland is permitted but will visibly shift the white color toward grey**
 8. **Pigment: blend into cement BEFORE adding sand or water, never exceed 10% of cement weight**
 9. **Cement-only paste has higher shrinkage, suitable for small experimental pieces, not large castings**
@@ -352,13 +352,13 @@ MIT, see [LICENSE](LICENSE).
 
 ### For 1kg Total Mix (Grey Portland + CSA + X33):
 
-- **Portland Cement**: 325g
-- **CSA Cement**: 175g
+- **Portland Cement**: 250g
+- **CSA Cement**: 250g
 - **Fine Sand**: 500g
 - **Water**: 220ml (W/C: 0.44)
 - **Level+ Plasticizer**: 3.8ml
 - **X33 Defoamer**: 250mg (0.250g)
-- **Hardening Time**: Maximum 2 hours
+- **Hardening Time**: ~1 hour demold
 
 **Mixing order**: Blend dry (Portland + CSA + sand + X33) → dissolve plasticizer in water → combine gradually → mix 2–3 min
 
