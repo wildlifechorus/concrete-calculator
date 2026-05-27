@@ -1,18 +1,22 @@
 # 🏗️ Concrete Calculator for Detailed Statues & Decorative Pieces
 
-A Node.js CLI that calculates precise concrete mix proportions for detailed statues and decorative work. Customized for **1:1 cement:sand ratios** (no aggregate) with **Level+ Concrete Plasticizer RM38**, **CSA cement** for ~1-hour demold time, **X33 Entschäumer** defoamer for bubble-free surface finish, and **iron oxide pigments** for pre-mix color previewing.
+A Node.js CLI that calculates precise concrete mix proportions for detailed statues and decorative work. Supports a **standard mix** (1:1 cement:sand) and a **lightweight perlite mix** (1:2 cement:perlite by volume, ~57% lighter), both with **Level+ Concrete Plasticizer RM38**, **CSA cement** for ~1-hour demold time, **X33 Entschäumer** defoamer for bubble-free surface finish, and **iron oxide pigments** for pre-mix color previewing.
 
 ## 🚀 Features
 
-- **Two calculation modes:**
-  - From scratch mixing (complete component calculation with step-by-step mixing order)
-  - Mold volume calculator (uses 3D software volume with customizable safety tolerance)
-- **Fixed mix ratios** (1:1 cement:sand, W/C 0.44, plasticizer 0.75%, X33 0.05%)
+- **Four calculation modes:**
+  - Standard mix, from scratch (complete component calculation with step-by-step mixing order)
+  - Standard mix, mold volume calculator (uses 3D software volume with customizable safety tolerance)
+  - Lightweight perlite mix, from scratch (1:2 cement:perlite, ~57% lighter, ~12.8 MPa)
+  - Lightweight perlite mix, mold volume calculator
+- **Standard mix ratios** (1:1 cement:sand, W/C 0.44, plasticizer 0.75%, X33 0.05%)
+- **Lightweight mix ratios** (1:2 cement:perlite by volume, W/C 0.38, same plasticizer and X33)
 - **Grey or White Portland cement**, white supported with identical ratios
-- **Cement-only paste mode**, skip sand for experimental decorative pieces
+- **Cement-only paste mode**, skip sand for experimental decorative pieces (standard mix)
 - **Pigment support**, pick from 4 iron oxide products and dial 1–10% of cement weight
 - **CSA cement support** for rapid setting applications (grey CSA slightly shifts white Portland color)
 - **X33 defoamer support** with per-batch dosing and step-by-step mixing order
+- **AR glass fiber support** (lightweight mix only), 3% of cement weight, 12mm chopped strands, prevents cracking in large pieces
 - **Interactive CLI** with input validation and a "calculate another?" loop
 - **Color simulator** (`color-simulator.html`), open in any browser, no server needed
 
@@ -91,7 +95,7 @@ yarn start
 
 ## 🧪 Scientific Ratios Used
 
-### From Scratch Mixing
+### Standard Mix
 
 - **Mix ratio**: 1:1 (cement:sand) or cement-only paste, no aggregate for fine detailed work
 - **Water-cement ratio**: 0.44 (flow for fine mold work without excess shrinkage)
@@ -100,11 +104,23 @@ yarn start
 - **X33 Defoamer**: 0.05% of total cement weight (dry-blended before water addition)
 - **Pigment**: 1–10% of cement weight, added as dry ingredient (both grey and white Portland)
 
+### Lightweight Perlite Mix
+
+- **Mix ratio**: 1:2 (cement:perlite by volume), perlite is measured in liters, not grams
+- **Water-cement ratio**: 0.38 (lower than standard, no sand to absorb water; plasticizer compensates)
+- **Density**: ~1,040 kg/m³ (~57% lighter than standard concrete at 2,400 kg/m³)
+- **Compressive strength**: ~12.8 MPa, adequate for decorative and large non-structural pieces
+- **CSA cement**: same 50% blend, strongly recommended for large pieces (low shrinkage reduces cracking)
+- **AR glass fibers**: 3% of cement weight, 12mm chopped strands (optional but recommended for large pieces)
+- **Level+ Plasticizer**: 0.75% of total cement weight (same as standard)
+- **X33 Defoamer**: 0.05% of total cement weight (same as standard)
+- **Pigment**: 1–10% of cement weight (same as standard)
+
 ## 🎯 Usage
 
-### Mode 1: From Scratch Mix
+### Mode 1: Standard Mix, From Scratch
 
-1. Select "Starting from scratch" from the menu
+1. Select "Standard mix, from scratch" from the menu
 2. Enter the total dry mix desired (in grams)
 3. Choose cement type: Grey Portland or White Portland
 4. Choose whether to include fine sand (uncheck for cement-only paste)
@@ -114,13 +130,32 @@ yarn start
 8. Get complete breakdown of all components with mixing order and curing times
 9. Optionally calculate another mix without restarting
 
-### Mode 2: Mold Volume Calculator
+### Mode 2: Standard Mix, Mold Volume Calculator
 
-1. Select "Calculate concrete needed for mold" from the menu
+1. Select "Standard mix, calculate for mold volume" from the menu
 2. Enter the model volume from your 3D software (mm³)
 3. Enter your safety tolerance (recommended 15–25%)
 4. Configure your mix (same steps as Mode 1 above, amount is pre-filled from the volume calc)
 5. Get the mix breakdown plus a mold volume summary
+
+### Mode 3: Lightweight Perlite Mix, From Scratch
+
+1. Select "Lightweight perlite mix, from scratch" from the menu
+2. Enter the cement weight desired (in grams), perlite volume is calculated automatically
+3. Choose cement type: Grey Portland or White Portland
+4. Choose whether to use CSA cement (recommended for large pieces)
+5. Choose whether to include X33 defoamer
+6. Choose whether to add AR glass fibers (recommended for large pieces, 12mm, 3% of cement)
+7. Optionally add pigment
+8. Get full ingredient breakdown in grams (cement, fibers, pigment) and liters (perlite), with step-by-step mixing order, over-mixing warnings, and curing times
+
+### Mode 4: Lightweight Perlite Mix, Mold Volume Calculator
+
+1. Select "Lightweight perlite mix, calculate for mold volume" from the menu
+2. Enter the model volume from your 3D software (mm³)
+3. Enter your safety tolerance (recommended 15–25%)
+4. Configure your mix (same steps as Mode 3 above, cement weight is derived from volume × lightweight density)
+5. Get the mix breakdown plus a mold volume summary with lightweight density note
 
 ## 📊 Example Calculations
 
@@ -203,6 +238,44 @@ With 20% tolerance: 183271.2 mm³
 Concrete density: 0.0024 g/mm³
 ```
 
+### Lightweight Perlite Mix (1000g cement, CSA blend, AR fibers, no pigment)
+
+```
+✅ Results (Lightweight Perlite Mix)
+Cement input: 1000g
+Portland: 500.0g
+CSA: 500.0g
+Fine perlite: 1.33L  (≈ 133g by weight)
+AR glass fibers: 30.0g
+Water: 380.0ml
+Level+ Plasticizer: 7.5ml
+X33 Defoamer: 500mg (0.500g), weigh on a mg scale
+
+📋 Mixing Order:
+  1. Combine Portland + CSA cement in mixing vessel
+  2. Add AR glass fibers, toss through dry cement to distribute
+  3. Add X33 powder, mix dry for 30 seconds until evenly distributed
+  4. Mix plasticizer into water in a separate cup
+  5. Pour water+plasticizer into dry cement, mix into a smooth slurry (2 min)
+  6. Add perlite, fold in gently until fully coated
+  7. Mix for 2–3 minutes MAX, stop as soon as uniform
+  8. Pour into mold and vibrate thoroughly to settle into all detail
+  9. Do NOT remix or top up, perlite crushes under prolonged agitation
+
+📝 1:2 cement:perlite (vol) | W/C: 0.38 | ~57% lighter than standard | CSA blend: ~1hr demold | AR fibers: crack resistance
+
+⚠️  Over-mixing warning:
+  Perlite particles are fragile, excess mixing crushes them,
+  increases density, and reduces the weight benefit.
+
+⏱️  Curing Times:
+  Initial set:    ~15–25 minutes, work quickly once mixed
+  Hard / demold:  ~1 hour
+  80% strength:   ~24 hours
+  Full cure:      28 days
+  Keep moist for first 3–7 days, lightweight mixes dry faster
+```
+
 ## 🔬 Technical Details
 
 ### Safety Tolerance
@@ -226,11 +299,31 @@ Concrete density: 0.0024 g/mm³
 
 ### Cement-Only Paste (No Sand)
 
-- Available for both grey and white Portland
+- Available for both grey and white Portland (standard mix only)
 - Entire `totalAmount` is cement; all additive dosages scale automatically
 - Plasticizer still recommended, improves paste flow into molds even without sand
 - **Higher shrinkage** than a sand mix, pure cement paste is more prone to cracking on larger pieces
 - Best used for small experimental pieces and pigment color testing
+
+### Lightweight Perlite Mix
+
+- **Input is cement weight** (in grams), not total mix weight, perlite volume is derived automatically
+- **Perlite measured in liters** (not grams) because bulk density varies; weight shown as an approximate reference only
+- **Fine perlite required**, 2–4 mm grain size; coarser perlite (3–6 mm) works for painted/sealed pieces, less suitable for raw finish
+- **Do not over-mix**, perlite particles are fragile; crushing them increases density and reduces the weight benefit; mix for 2–3 minutes maximum after adding perlite
+- **Vibrate the mold** after pouring, the mix is less fluid than standard; good vibration ensures it fills all detail
+- **Keep moist 3–7 days** after demold, lightweight mixes dry out faster than standard concrete
+- **Not for structural uses**, designed for decorative and non-load-bearing applications
+- **AR glass fibers**: must be alkali-resistant (AR) glass with minimum 16.5% ZrO₂; do not substitute standard E-glass fiberglass which degrades in cement
+
+### AR Glass Fibers (Lightweight Mix)
+
+- **Type**: Alkali-Resistant (AR) chopped glass strands, minimum 16.5% ZrO₂ content
+- **Length**: 12–13 mm for solid pours of 15 mm sections or thicker; bridges macro-cracks in large pieces
+- **Dosage**: 3% of cement weight (calculator default)
+- **Mixing**: add to dry cement and toss to distribute before adding water; no special equipment needed
+- **No surface protrusion risk** in solid pours, fibers are fully encapsulated inside the mix; only thin-shell work risks visible fibers
+- **Spanish brands**: Paviland Fibra AR (Grupo Puma), Fibratec V12-AM, ARG Fibra AR 13mm (NEG)
 
 ### Pigment
 
@@ -274,7 +367,7 @@ Concrete density: 0.0024 g/mm³
 2. **X33 defoamer must be blended into dry ingredients BEFORE adding any water**
 3. **Mix Level+ Plasticizer with water before adding to concrete**
 4. **Add water gradually to achieve desired consistency**
-5. **1:1 cement:sand ratio, NO aggregate for smooth fine finish** (or cement-only paste for experimental work)
+5. **Standard mix: 1:1 cement:sand ratio, NO aggregate for smooth fine finish** (or cement-only paste for experimental work)
 6. **CSA cement blend targets ~1-hour demold for fast production**
 7. **Mixing grey CSA with white Portland is permitted but will visibly shift the white color toward grey**
 8. **Pigment: blend into cement BEFORE adding sand or water, never exceed 10% of cement weight**
@@ -283,6 +376,10 @@ Concrete density: 0.0024 g/mm³
 11. **Operating temperature: +5°C to +25°C for plasticizer effectiveness**
 12. **Weigh X33 on a milligram scale, kitchen scales are not accurate enough at these quantities**
 13. **Never increase X33 dosage beyond 0.20% of cement weight, overdosing causes defects**
+14. **Lightweight mix: do NOT over-mix after adding perlite, 2–3 minutes maximum, stop when uniform**
+15. **Lightweight mix: use AR glass fibers only (minimum 16.5% ZrO₂), standard fiberglass degrades in cement**
+16. **Lightweight mix: vibrate mold thoroughly after pouring, less fluid than standard concrete**
+17. **Lightweight mix: keep moist for 3–7 days after demold, dries faster than standard concrete**
 
 ## 🎨 Color Simulator
 
@@ -328,17 +425,17 @@ yarn build:simulator  # Regenerate lib/data.browser.js from lib/data.js
 ```
 concrete-calculator/
 ├── lib/
-│   ├── constants.js          # Mix ratios and dosage constants
+│   ├── constants.js          # MIX and LIGHTWEIGHT constants (ratios, dosages)
 │   ├── data.js               # Pigment products and cement types (source of truth)
-│   ├── calculations.js       # Pure calculation functions
-│   ├── prompts.js            # Inquirer CLI prompt helpers
-│   ├── display.js            # Console output formatting
+│   ├── calculations.js       # calculateScratchMix(), calculateLightweightMix(), formatDefoamer()
+│   ├── prompts.js            # Inquirer CLI prompt helpers (standard + lightweight)
+│   ├── display.js            # Console output formatting (standard + lightweight)
 │   └── data.browser.js       # Auto-generated, for color-simulator.html
 ├── scripts/
 │   └── build-simulator.js    # Generates lib/data.browser.js
 ├── .github/workflows/ci.yml  # CI: lint + format + test
-├── index.js                  # Entry point (thin orchestrator)
-├── smoke-test.js             # node:test smoke tests
+├── index.js                  # Entry point, 4-mode menu orchestrator
+├── smoke-test.js             # node:test smoke tests (122 tests)
 └── color-simulator.html      # Standalone browser color preview tool
 ```
 
@@ -350,7 +447,7 @@ MIT, see [LICENSE](LICENSE).
 
 ## 📋 Quick Reference
 
-### For 1kg Total Mix (Grey Portland + CSA + X33):
+### Standard Mix, 1kg total (Grey Portland + CSA + X33)
 
 - **Portland Cement**: 250g
 - **CSA Cement**: 250g
@@ -358,11 +455,11 @@ MIT, see [LICENSE](LICENSE).
 - **Water**: 220ml (W/C: 0.44)
 - **Level+ Plasticizer**: 3.8ml
 - **X33 Defoamer**: 250mg (0.250g)
-- **Hardening Time**: ~1 hour demold
+- **Demold**: ~1 hour
 
 **Mixing order**: Blend dry (Portland + CSA + sand + X33) → dissolve plasticizer in water → combine gradually → mix 2–3 min
 
-### For 1kg Total Mix (White Portland + 5% Pigment + X33, with sand):
+### Standard Mix, 1kg total (White Portland + 5% Pigment + X33, with sand)
 
 - **White Portland**: 500g
 - **Fine Sand**: 500g
@@ -373,7 +470,7 @@ MIT, see [LICENSE](LICENSE).
 
 **Mixing order**: Blend dry (white Portland + pigment until uniform + sand + X33) → dissolve plasticizer in water → combine gradually → mix 2–3 min
 
-### For 1kg Cement-Only Paste (White Portland + 5% Pigment + X33, no sand, experimental):
+### Standard Mix, 1kg cement-only paste (White Portland + 5% Pigment + X33, experimental)
 
 - **White Portland**: 1000g
 - **Pigment**: 50g (5% of cement)
@@ -383,3 +480,17 @@ MIT, see [LICENSE](LICENSE).
 
 **Mixing order**: Blend dry (white Portland + pigment until uniform + X33) → dissolve plasticizer in water → combine gradually → mix 2–3 min
 ⚠️ Cement-only paste has higher shrinkage, use for small experimental pieces only
+
+### Lightweight Mix, 1kg cement input (Grey Portland + CSA + AR fibers + X33)
+
+- **Portland Cement**: 500g
+- **CSA Cement**: 500g
+- **Fine Perlite**: 1.33L (≈ 133g by weight)
+- **AR Glass Fibers (12mm)**: 30g
+- **Water**: 380ml (W/C: 0.38)
+- **Level+ Plasticizer**: 7.5ml
+- **X33 Defoamer**: 500mg (0.500g)
+- **Demold**: ~1 hour | ~57% lighter than standard concrete
+
+**Mixing order**: Blend dry (Portland + CSA + fibers + X33) → dissolve plasticizer in water → mix into slurry (2 min) → fold in perlite gently (2–3 min MAX) → pour and vibrate mold thoroughly
+⚠️ Do not over-mix after adding perlite, crushing it defeats the weight reduction
