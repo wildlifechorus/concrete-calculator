@@ -268,6 +268,38 @@
         color: var(--text-3);
       }
 
+      /* Saturation point marker on the gradient strip */
+      .strip-wrap {
+        position: relative;
+      }
+      .sat-marker {
+        position: absolute;
+        top: -2px;
+        bottom: 14px;
+        width: 1px;
+        background: var(--accent);
+        pointer-events: none;
+      }
+      .sat-marker::after {
+        content: 'sat 7%';
+        position: absolute;
+        top: -12px;
+        left: -16px;
+        font-size: 9px;
+        color: var(--accent);
+        white-space: nowrap;
+      }
+
+      /* Dosage guidance hint */
+      .dose-hint {
+        font-size: 11px;
+        color: var(--text-3);
+        margin-top: 4px;
+      }
+      .dose-hint.warn {
+        color: #b8820a;
+      }
+
       /* Mix swatch (blended pigment preview) */
       .mix-preview-row {
         display: flex;
@@ -398,20 +430,70 @@
         font-size: 12px;
         font-weight: 500;
         cursor: pointer;
-        transition: border-color 0.15s, background 0.15s;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
       }
 
       .btn:hover {
         border-color: var(--accent);
         background: var(--bg);
       }
+
+      /* Model details (collapsible) */
+      details.model-details {
+        margin-top: 24px;
+        border-top: 1px solid var(--border);
+        padding-top: 16px;
+      }
+      details.model-details summary {
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+        list-style: none;
+        outline: none;
+      }
+      details.model-details summary::-webkit-details-marker {
+        display: none;
+      }
+      details.model-details summary::before {
+        content: '▸ ';
+        font-size: 10px;
+        color: var(--text-2);
+        transition: transform 0.15s;
+        display: inline-block;
+      }
+      details.model-details[open] summary::before {
+        content: '▾ ';
+      }
+      details.model-details .body {
+        margin-top: 12px;
+        font-size: 12px;
+        color: var(--text-2);
+        line-height: 1.6;
+      }
+      details.model-details .body ul {
+        padding-left: 18px;
+        margin: 6px 0;
+      }
+      details.model-details .body li {
+        margin: 3px 0;
+      }
+      details.model-details .body code {
+        background: var(--bg-subtle);
+        padding: 1px 5px;
+        border-radius: 3px;
+        font-size: 11px;
+      }
     </style>
   </head>
   <body>
     <h1>Concrete Color Simulator</h1>
     <p class="subtitle">
-      Approximate color preview based on mix settings. Actual results vary by batch, water content,
-      and curing conditions.
+      Physics-based preview using Kubelka–Munk pigment mixing and an industry-calibrated saturation
+      curve. Always pour a small test slab before a full batch — final color is affected by water
+      content, curing, finishing, and sand source.
     </p>
 
     <hr />
@@ -466,11 +548,13 @@
           <div class="field">
             <label for="pigment-pct">Amount (% of cement weight)</label>
             <div style="display: flex; align-items: center; gap: 10px">
-              <input type="number" id="pigment-pct" value="5" min="1" max="10" step="0.5" />
+              <input type="number" id="pigment-pct" value="3" min="1" max="10" step="0.5" />
               <span style="font-size: 12px; color: var(--text-3)">1 – 10 %</span>
             </div>
+            <div id="dose-hint" class="dose-hint"></div>
             <div class="strip-wrap" style="margin-top: 8px">
               <div id="gradient-strip"></div>
+              <div class="sat-marker" id="strip-sat-marker"></div>
               <div class="strip-labels"><span>1%</span><span>10%</span></div>
             </div>
           </div>
@@ -501,9 +585,10 @@
             <div class="field">
               <label for="pigment-2-pct">Amount (% of cement weight)</label>
               <div style="display: flex; align-items: center; gap: 10px">
-                <input type="number" id="pigment-2-pct" value="3" min="1" max="10" step="0.5" />
+                <input type="number" id="pigment-2-pct" value="2" min="1" max="10" step="0.5" />
                 <span style="font-size: 12px; color: var(--text-3)">1 – 10 %</span>
               </div>
+              <div id="dose-hint-2" class="dose-hint"></div>
             </div>
 
             <div class="mix-preview-row">
@@ -555,15 +640,101 @@
       <div class="range-section">
         <h3 id="range-title"></h3>
         <p style="font-size: 12px; color: var(--text-3); margin-bottom: 4px">
-          0% (base) through 10% pigment by cement weight
+          0% (base) through 10% pigment by cement weight. Border-highlighted column = current
+          dosage. Outline at 7% = industry saturation point.
         </p>
         <div class="range-strip" id="range-strip"></div>
       </div>
     </div>
 
+    <!-- Model details (transparency about what's simulated and what's not) -->
+    <details class="model-details">
+      <summary>How accurate is this preview?</summary>
+      <div class="body">
+        <p>
+          The simulator targets a realistic preview for decorative casting work. It is calibrated
+          against published industry data so you can dial in a recipe with minimal test pours and
+          pigment waste.
+        </p>
+        <p style="margin-top: 10px"><strong>What is modeled</strong></p>
+        <ul>
+          <li>
+            <strong>Pigment + cement blending</strong> uses
+            <a
+              href="https://github.com/rvanwijnen/spectral.js"
+              target="_blank"
+              rel="noopener"
+              style="color: var(--accent)"
+              >Spectral.js</a
+            >, a Kubelka–Munk pigment-mixing library (the same physics model paint chemists use for
+            color matching). This gives much more realistic midtones than naive RGB blending.
+          </li>
+          <li>
+            <strong>Saturation curve</strong>: <code>1 − exp(−0.50 · pct)</code>. Color develops
+            rapidly through 4 %, plateaus by 6–7 %, and is essentially flat above 8 %. Matches
+            Solomon Colors' published 7 % saturation point.
+          </li>
+          <li>
+            <strong>Sand visibility</strong> in a 1:1 cement:sand mortar is set to 30 % for a smooth
+            mold-cast surface. Sand particles are inert — pigment only colors the cement paste, then
+            sand grains dilute the visible color.
+          </li>
+          <li>
+            <strong>Wet vs dry shift</strong>: fresh / wet concrete is rendered 32 % darker than
+            fully cured. This matches the "hose it down to preview sealed color" guidance from
+            <a
+              href="https://www.solomoncolors.com/blog/concrete-color/faqs.html"
+              target="_blank"
+              rel="noopener"
+              style="color: var(--accent)"
+              >Solomon Colors</a
+            >.
+          </li>
+        </ul>
+        <p style="margin-top: 10px"><strong>What is NOT modeled</strong></p>
+        <ul>
+          <li>
+            <strong>Pigment-specific tinting strength</strong>. The four products are assumed to
+            have equal tinting strength. Real iron oxides vary by ±20–40 % between brands and mesh
+            sizes (mesh 500 is more vivid per gram than mesh 325).
+          </li>
+          <li>
+            <strong>Water-cement ratio</strong> (modeled as constant 0.44). Higher W/C produces
+            lighter, more porous, slightly chalkier color.
+          </li>
+          <li>
+            <strong>Carbonation and aging</strong>. Cured concrete (4+ weeks) is somewhat lighter
+            than freshly demolded; the "dry" swatch approximates 28-day cured.
+          </li>
+          <li>
+            <strong>Sealer effects</strong>. A film-forming sealer darkens roughly as much as the
+            "wet" preview; matte water-based sealers barely change color.
+          </li>
+          <li>
+            <strong>Sand source</strong>. The model assumes a typical pale silica sand (RGB 210,
+            195, 162). Spanish marble sand, beach sand, or grog will shift the mortar color.
+          </li>
+          <li>
+            <strong>CSA cement</strong>. Grey CSA blended into white Portland shifts the color
+            toward grey; not currently reflected when "White Portland" is selected (assume CSA off
+            for the white preview).
+          </li>
+        </ul>
+        <p style="margin-top: 10px"><strong>Always pour a test slab</strong></p>
+        <p>
+          Even with a physically-based model, batch-to-batch variation in cement source, sand
+          source, water hardness, ambient temperature, and curing humidity will produce ±1 shade
+          variation. For high-stakes pieces, mix a 100–200 g test puck with your target recipe
+          before committing to the full pour.
+        </p>
+      </div>
+    </details>
+
     <script src="lib/data.browser.js"></script>
+    <script src="lib/vendor/spectral.min.js"></script>
     <script>
       const { PIGMENTS } = window.SIMULATOR_DATA;
+      const hasSpectral = typeof window.spectral !== 'undefined';
 
       function populatePigmentSelect(el) {
         el.innerHTML = '';
@@ -583,38 +754,107 @@
       const pigmentKeys = Object.keys(PIGMENTS);
       if (pigmentKeys.length > 1) pigment2SelectEl.value = pigmentKeys[1];
 
+      // Base reference colors (sRGB), calibrated against published references:
+      //   White Portland CEM I 52.5R/N typically reflects L* ≈ 88–94. (232,228,218) ≈ L*91.
+      //   Grey Portland CEM I/II varies L* ≈ 50–65. (138,134,130) ≈ L*56 (typical mid-grey).
+      //   Fine silica/quartz sand averages a pale warm tan around (210,195,162).
       const WHITE_CEMENT = { r: 232, g: 228, b: 218 };
       const GREY_CEMENT = { r: 138, g: 134, b: 130 };
       const SAND_COLOR = { r: 210, g: 195, b: 162 };
 
-      function lerp(a, b, t) {
-        const cl = (v) => Math.max(0, Math.min(255, Math.round(v)));
+      // Industry-derived constants (Solomon Colors, Davis Colors, Serra Ciments):
+      //   Saturation point: ~7% pigment by cement weight (no further color development).
+      //   Optimum dosage range: 2–4%.
+      //   Strength loss begins above 10%.
+      const SATURATION_K = 0.5; // tunes the diminishing-returns curve
+      const MAX_INFLUENCE_WHITE = 0.62; // asymptotic pigment dominance over white base
+      const MAX_INFLUENCE_GREY = 0.4; // grey desaturates pigment; lower max
+      const SAND_VISIBILITY = 0.3; // fraction of sand visible through paste in 1:1 mortar
+      const WET_DARKEN = 0.68; // ~32% darker for wet/fresh (matches sealed appearance)
+
+      function clampByte(v) {
+        return Math.max(0, Math.min(255, Math.round(v)));
+      }
+
+      // sRGB → linear-light helper (gamma 2.2 approximation, fast enough for live preview)
+      function srgbToLinear(c) {
+        return Math.pow(c / 255, 2.2);
+      }
+      function linearToSrgb(c) {
+        return clampByte(255 * Math.pow(c, 1 / 2.2));
+      }
+
+      // Fallback mix in linear-light RGB (used if spectral.js fails to load).
+      // Better than sRGB lerp because it produces correct midpoint luminance.
+      function linearMix(a, b, t) {
         return {
-          r: cl(a.r + (b.r - a.r) * t),
-          g: cl(a.g + (b.g - a.g) * t),
-          b: cl(a.b + (b.b - a.b) * t),
+          r: linearToSrgb(srgbToLinear(a.r) * (1 - t) + srgbToLinear(b.r) * t),
+          g: linearToSrgb(srgbToLinear(a.g) * (1 - t) + srgbToLinear(b.g) * t),
+          b: linearToSrgb(srgbToLinear(a.b) * (1 - t) + srgbToLinear(b.b) * t),
         };
+      }
+
+      // Physically-based pigment mix using Kubelka–Munk theory (Spectral.js).
+      // For two pigments dispersed in a cementitious binder, this is the standard
+      // industry model for predicting reflectance from spectral absorption/scattering.
+      function spectralMix(a, b, t) {
+        if (t <= 0) return { ...a };
+        if (t >= 1) return { ...b };
+        if (!hasSpectral) return linearMix(a, b, t);
+        try {
+          const ca = new spectral.Color([a.r, a.g, a.b]);
+          const cb = new spectral.Color([b.r, b.g, b.b]);
+          const mixed = spectral.mix([ca, 1 - t], [cb, t]);
+          const rgb = mixed.toGamut({ method: 'map' }).sRGB;
+          return { r: clampByte(rgb[0]), g: clampByte(rgb[1]), b: clampByte(rgb[2]) };
+        } catch {
+          return linearMix(a, b, t);
+        }
+      }
+
+      // Saturation curve: how much of the pigment's potential influence is realized
+      // at a given dosage (% of cement weight).
+      //   f(1)  ≈ 0.39 — visible but soft (Solomon "1% loading: soft colors")
+      //   f(2)  ≈ 0.63 — warmer ("2% loading: warmer colors")
+      //   f(3)  ≈ 0.78 — strong ("3% loading: strong colors")
+      //   f(4)  ≈ 0.86 — bold ("4% loading: bold colors")
+      //   f(7)  ≈ 0.97 — saturation point (Solomon 7% industry standard)
+      //   f(10) ≈ 0.99 — wasted (no further color, strength loss begins)
+      function pigmentSaturation(pct) {
+        if (pct <= 0) return 0;
+        return 1 - Math.exp(-SATURATION_K * pct);
       }
 
       function toHex({ r, g, b }) {
         return '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('');
       }
-
       function toCSS({ r, g, b }) {
         return `rgb(${r},${g},${b})`;
       }
-
       function luminance({ r, g, b }) {
         return 0.299 * r + 0.587 * g + 0.114 * b;
       }
 
+      // Blend two pigment products before they meet the cement.
+      // The two pigments dilute each other linearly by their relative dosages,
+      // but their combined effective dosage is capped at 10% (industry max).
       function blendPigments(pig1, pct1, pig2, pct2) {
         const total = pct1 + pct2;
         if (total === 0) return { color: pig1, totalPct: 0 };
         const t = pct2 / total;
-        return { color: lerp(pig1, pig2, t), totalPct: Math.min(10, total) };
+        return {
+          color: spectralMix(pig1, pig2, t),
+          totalPct: Math.min(10, total),
+        };
       }
 
+      // Compute the final surface color of the cured mix.
+      //
+      // Order matches physical reality:
+      //   1. Build the pigment (blend two if requested).
+      //   2. Color the cement paste with the pigment (saturation curve × max influence).
+      //   3. Add sand — sand particles are inert and dilute the visible color.
+      //   4. Apply wet darkening if previewing fresh / unsealed-wet appearance.
       function computeColor({
         cementType,
         useSand,
@@ -626,9 +866,9 @@
         pigment2Percent,
         wet,
       }) {
-        let base = cementType === 'white' ? { ...WHITE_CEMENT } : { ...GREY_CEMENT };
+        const cement = cementType === 'white' ? WHITE_CEMENT : GREY_CEMENT;
 
-        if (useSand) base = lerp(base, SAND_COLOR, 0.45);
+        let paste = cement;
 
         if (pigmentEnabled && pigmentPercent > 0) {
           const pig1 = PIGMENTS[pigmentKey] || PIGMENTS[pigmentKeys[0]];
@@ -643,18 +883,50 @@
             totalPct = blended.totalPct;
           }
 
-          const maxInf = cementType === 'white' ? 0.62 : 0.38;
-          const influence = (totalPct / 10) * maxInf;
-          base = lerp(base, effectivePigment, influence);
+          const maxInf = cementType === 'white' ? MAX_INFLUENCE_WHITE : MAX_INFLUENCE_GREY;
+          const influence = pigmentSaturation(totalPct) * maxInf;
+          paste = spectralMix(cement, effectivePigment, influence);
         }
 
-        if (wet)
-          base = {
-            r: Math.round(base.r * 0.74),
-            g: Math.round(base.g * 0.74),
-            b: Math.round(base.b * 0.74),
+        let surface = paste;
+        if (useSand) surface = spectralMix(paste, SAND_COLOR, SAND_VISIBILITY);
+
+        if (wet) {
+          surface = {
+            r: clampByte(surface.r * WET_DARKEN),
+            g: clampByte(surface.g * WET_DARKEN),
+            b: clampByte(surface.b * WET_DARKEN),
           };
-        return base;
+        }
+        return surface;
+      }
+
+      // Human-readable dosage guidance, matching Solomon Colors' loading chart.
+      function dosageHint(pct) {
+        if (pct <= 0) return { text: '', warn: false };
+        if (pct < 1)
+          return { text: `${pct} %: below 1 % — risk of washed-out, irregular color.`, warn: true };
+        if (pct < 2) return { text: `${pct} %: soft, pastel color.`, warn: false };
+        if (pct < 3)
+          return { text: `${pct} %: warmer color — within industry optimum.`, warn: false };
+        if (pct < 5)
+          return { text: `${pct} %: strong color — industry optimum (2–4 %).`, warn: false };
+        if (pct < 7)
+          return { text: `${pct} %: deep color — approaching saturation point.`, warn: false };
+        if (pct <= 7.5)
+          return {
+            text: `${pct} %: saturation point reached. Further pigment adds little visible color.`,
+            warn: true,
+          };
+        if (pct < 10)
+          return {
+            text: `${pct} %: beyond saturation — wasted pigment, strength loss starts at 10 %.`,
+            warn: true,
+          };
+        return {
+          text: `${pct} %: industry max. Further pigment reduces concrete strength.`,
+          warn: true,
+        };
       }
 
       const cementSel = document.getElementById('cement-type');
@@ -665,12 +937,15 @@
       const pigSel = pigmentSelectEl;
       const pigDot = document.getElementById('pigment-dot');
       const pigPctInput = document.getElementById('pigment-pct');
+      const doseHintEl = document.getElementById('dose-hint');
       const gradStrip = document.getElementById('gradient-strip');
+      const stripSatMarker = document.getElementById('strip-sat-marker');
       const usePig2Chk = document.getElementById('use-pigment-2');
       const pig2Fields = document.getElementById('pigment-2-fields');
       const pig2Sel = pigment2SelectEl;
       const pig2Dot = document.getElementById('pigment-2-dot');
       const pig2PctInput = document.getElementById('pigment-2-pct');
+      const doseHint2El = document.getElementById('dose-hint-2');
       const mixSwatch = document.getElementById('mix-swatch');
       const mixLabel = document.getElementById('mix-label');
       const swatchDry = document.getElementById('swatch-dry');
@@ -684,6 +959,15 @@
       const btnExport = document.getElementById('btn-export');
       const btnImport = document.getElementById('btn-import');
       const fileImport = document.getElementById('file-import');
+
+      // Position the saturation marker at 7% within the 1-10% gradient strip.
+      // Strip starts at 1% (left edge) and ends at 10% (right edge), so 7% is at
+      // (7 - 1) / (10 - 1) ≈ 66.67% of the strip width.
+      function positionSatMarker() {
+        const left = ((7 - 1) / (10 - 1)) * 100;
+        stripSatMarker.style.left = `calc(${left}% - 0.5px)`;
+      }
+      positionSatMarker();
 
       function render() {
         const cementType = cementSel.value;
@@ -705,7 +989,12 @@
         pig2Dot.style.background = toCSS(pigment2);
 
         if (pigment2Enabled && pigment2Percent > 0 && pigmentPercent > 0) {
-          const { color, totalPct } = blendPigments(pigment, pigmentPercent, pigment2, pigment2Percent);
+          const { color, totalPct } = blendPigments(
+            pigment,
+            pigmentPercent,
+            pigment2,
+            pigment2Percent
+          );
           mixSwatch.style.background = toCSS(color);
           const capped = totalPct < pigmentPercent + pigment2Percent ? ' (capped at 10%)' : '';
           mixLabel.textContent = `Blend: ${pigment.label} + ${pigment2.label} = ${toHex(color)}${capped}`;
@@ -738,22 +1027,50 @@
         hexDry.textContent = toHex(dry);
         hexWet.textContent = toHex(wet);
 
+        // Dose-hint guidance under each pigment input.
+        const dose1 = pigmentEnabled ? dosageHint(pigmentPercent) : { text: '', warn: false };
+        doseHintEl.textContent = dose1.text;
+        doseHintEl.className = 'dose-hint' + (dose1.warn ? ' warn' : '');
+
+        const dose2 =
+          pigmentEnabled && pigment2Enabled
+            ? dosageHint(pigment2Percent)
+            : { text: '', warn: false };
+        doseHint2El.textContent = dose2.text;
+        doseHint2El.className = 'dose-hint' + (dose2.warn ? ' warn' : '');
+
+        // Show saturation marker only while pigment is on (the gradient strip itself
+        // is hidden by parent visibility).
+        stripSatMarker.style.display = pigmentEnabled ? 'block' : 'none';
+
+        // Build the main callout. Combines cement-type guidance with dosage warnings.
+        const totalPct = pigmentPercent + (pigment2Enabled ? pigment2Percent : 0);
         let note,
           isWarn = false;
         if (!pigmentEnabled) {
           note =
             cementType === 'white'
-              ? 'Clean off-white base; pigments read close to the swatch.'
-              : 'Grey Portland mutes pigment; expect earthy tones.';
-        } else if (cementType === 'grey') {
-          note = 'Grey base desaturates the pigment. Expect earthy, natural tones.';
+              ? 'Clean off-white base; pigments will read close to the swatch.'
+              : 'Grey Portland mutes pigment by ~30 %. Expect earthy, natural tones.';
+        } else if (totalPct > 7) {
           isWarn = true;
+          note = `Combined pigment is ${totalPct} % — above the 7 % saturation point. Adding more pigment costs material without making the color darker. Industry max is 10 % (strength loss above).`;
+        } else if (cementType === 'grey') {
+          isWarn = false;
+          note = `Grey base desaturates the pigment toward earthy tones. For vivid colors, switch to White Portland.`;
+        } else if (totalPct < 1) {
+          isWarn = true;
+          note = `Total pigment is ${totalPct} % — risk of washed-out, blotchy color. Recommend 2–4 % for the optimum strong-color range.`;
         } else {
-          note = 'White base preserves pigment color for vivid, clean results.';
+          note = `White base preserves pigment color. ${totalPct} % is ${
+            totalPct >= 2 && totalPct <= 4
+              ? 'in the industry optimum range (2–4 %).'
+              : totalPct < 2
+                ? 'a soft / pastel loading.'
+                : 'a deep loading approaching saturation.'
+          }`;
         }
-        callout.textContent = isWarn
-          ? note + ' Switch to White Portland for more vivid colors.'
-          : note;
+        callout.textContent = note;
         callout.className = 'callout' + (isWarn ? ' warn' : '');
 
         gradStrip.innerHTML = '';
@@ -766,7 +1083,9 @@
             pigmentPercent: pct,
             pigment2Enabled,
             pigment2Key,
-            pigment2Percent: pigment2Enabled ? (pct * pigment2Percent) / Math.max(1, pigmentPercent) : 0,
+            pigment2Percent: pigment2Enabled
+              ? (pct * pigment2Percent) / Math.max(1, pigmentPercent)
+              : 0,
             wet: false,
           });
           const seg = document.createElement('div');
@@ -806,11 +1125,17 @@
             const swatch = document.createElement('div');
             const label = document.createElement('span');
             col.className = 'range-col';
-            swatch.className =
-              'range-swatch' + (pct === Math.round(pigmentPercent) ? ' active' : '');
+            const isCurrent = pct === Math.round(pigmentPercent);
+            const isSatPoint = pct === 7;
+            swatch.className = 'range-swatch' + (isCurrent ? ' active' : '');
             swatch.style.background = toCSS(c);
+            if (isSatPoint && !isCurrent) {
+              swatch.style.outline = '1px dashed var(--accent)';
+              swatch.style.outlineOffset = '1px';
+              swatch.title = 'Industry saturation point (Solomon Colors)';
+            }
             label.className = 'range-pct';
-            label.textContent = pct + '%';
+            label.textContent = pct + '%' + (isSatPoint ? ' ◆' : '');
             col.appendChild(swatch);
             col.appendChild(label);
             rangeStrip.appendChild(col);
@@ -824,10 +1149,10 @@
           useSand: useSandChk.checked,
           pigmentEnabled: usePigChk.checked,
           pigmentKey: pigSel.value,
-          pigmentPercent: parseFloat(pigPctInput.value) || 5,
+          pigmentPercent: parseFloat(pigPctInput.value) || 3,
           pigment2Enabled: usePig2Chk.checked,
           pigment2Key: pig2Sel.value,
-          pigment2Percent: parseFloat(pig2PctInput.value) || 3,
+          pigment2Percent: parseFloat(pig2PctInput.value) || 2,
         };
       }
 
@@ -874,8 +1199,16 @@
         fileImport.value = '';
       });
 
-      [cementSel, useSandChk, usePigChk, pigSel, pigPctInput,
-       usePig2Chk, pig2Sel, pig2PctInput].forEach((el) => {
+      [
+        cementSel,
+        useSandChk,
+        usePigChk,
+        pigSel,
+        pigPctInput,
+        usePig2Chk,
+        pig2Sel,
+        pig2PctInput,
+      ].forEach((el) => {
         el.addEventListener('change', render);
         el.addEventListener('input', render);
       });

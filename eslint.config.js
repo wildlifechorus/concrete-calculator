@@ -16,6 +16,6 @@ export default [
     },
   },
   {
-    ignores: ['node_modules', 'lib/data.browser.js'],
+    ignores: ['node_modules', 'lib/data.browser.js', 'lib/vendor/**'],
   },
 ];

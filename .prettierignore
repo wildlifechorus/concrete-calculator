@@ -1,2 +1,3 @@
 node_modules
 lib/data.browser.js
+lib/vendor/
