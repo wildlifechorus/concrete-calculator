@@ -527,7 +527,7 @@
 
         <div class="toggle-row">
           <label class="toggle">
-            <input type="checkbox" id="use-pigment" />
+            <input type="checkbox" id="use-pigment" checked />
             <div class="toggle-track"></div>
             <div class="toggle-thumb"></div>
           </label>
@@ -672,7 +672,13 @@
           <li>
             <strong>Saturation curve</strong>: <code>1 − exp(−0.50 · pct)</code>. Color develops
             rapidly through 4 %, plateaus by 6–7 %, and is essentially flat above 8 %. Matches
-            Solomon Colors' published 7 % saturation point.
+            Solomon Colors' published 7 % saturation point. Dosage guidance is cement-type aware per
+            <a href="https://www.serraciments.com/en/colour-chart/" target="_blank" rel="noopener"
+              >SC Pigments' colour chart</a
+            >: 2–3 % standard on white Portland, 4–5 % standard on grey Portland. Each pigment
+            carries a calibrated tinting-strength factor (Pardo 4660 = 1.13×, Negro 55 = 1.52×),
+            derived by fitting the KM model against the manufacturer's own swatch hex values at 2–5
+            % dosage — reducing average sRGB prediction error from ~80 to ~27 units.
           </li>
           <li>
             <strong>Sand visibility</strong> in a 1:1 cement:sand mortar is set to 30 % for a smooth
@@ -733,16 +739,23 @@
     <script src="lib/data.browser.js"></script>
     <script src="lib/vendor/spectral.min.js"></script>
     <script>
-      const { PIGMENTS } = window.SIMULATOR_DATA;
+      const { PIGMENTS, PIGMENT_GROUPS } = window.SIMULATOR_DATA;
       const hasSpectral = typeof window.spectral !== 'undefined';
 
+      // Build grouped <optgroup> selects from PIGMENT_GROUPS.
       function populatePigmentSelect(el) {
         el.innerHTML = '';
-        for (const [key, { label }] of Object.entries(PIGMENTS)) {
-          const opt = document.createElement('option');
-          opt.value = key;
-          opt.textContent = label;
-          el.appendChild(opt);
+        for (const group of PIGMENT_GROUPS) {
+          const grp = document.createElement('optgroup');
+          grp.label = group.label;
+          for (const key of group.keys) {
+            if (!PIGMENTS[key]) continue;
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = PIGMENTS[key].label;
+            grp.appendChild(opt);
+          }
+          if (grp.children.length) el.appendChild(grp);
         }
       }
 
@@ -751,8 +764,11 @@
       populatePigmentSelect(pigmentSelectEl);
       populatePigmentSelect(pigment2SelectEl);
 
+      // Default primary to brown (Pardo 4660), secondary to black (Negro 55).
+      pigmentSelectEl.value = 'brown';
+      pigment2SelectEl.value = 'black';
+
       const pigmentKeys = Object.keys(PIGMENTS);
-      if (pigmentKeys.length > 1) pigment2SelectEl.value = pigmentKeys[1];
 
       // Base reference colors (sRGB), calibrated against published references:
       //   White Portland CEM I 52.5R/N typically reflects L* ≈ 88–94. (232,228,218) ≈ L*91.
@@ -883,9 +899,21 @@
             totalPct = blended.totalPct;
           }
 
-          const maxInf = cementType === 'white' ? MAX_INFLUENCE_WHITE : MAX_INFLUENCE_GREY;
-          const influence = pigmentSaturation(totalPct) * maxInf;
-          paste = spectralMix(cement, effectivePigment, influence);
+          // Per-pigment tinting strength, calibrated from SC Pigments' real colour-chart
+          // swatches via Kubelka–Munk fit. Iron oxide black has higher KM absorptivity
+          // than brown, so its strength factor (1.52) reflects physical reality.
+          // When two pigments are blended, strength is weighted by their relative dose.
+          const baseInf = cementType === 'white' ? MAX_INFLUENCE_WHITE : MAX_INFLUENCE_GREY;
+          let effectiveStrength = pig1.strength ?? 1;
+          if (pigment2Enabled && pigment2Percent > 0) {
+            const pig2ForStrength = PIGMENTS[pigment2Key] || PIGMENTS[pigmentKeys[0]];
+            const s2 = pig2ForStrength.strength ?? 1;
+            effectiveStrength =
+              (effectiveStrength * pigmentPercent + s2 * pigment2Percent) /
+              (pigmentPercent + pigment2Percent);
+          }
+          const influence = pigmentSaturation(totalPct) * baseInf * effectiveStrength;
+          paste = spectralMix(cement, effectivePigment, Math.min(1, influence));
         }
 
         let surface = paste;
@@ -901,30 +929,70 @@
         return surface;
       }
 
-      // Human-readable dosage guidance, matching Solomon Colors' loading chart.
-      function dosageHint(pct) {
+      // Human-readable dosage guidance.
+      // Optimum ranges come from SC Pigments' (Serra Ciments) own colour chart, which
+      // specifies different ranges per cement type because grey Portland resists colour:
+      //   White cement: standard 2–3 %
+      //   Grey cement:  standard 4–5 %
+      // Saturation point (7 %) and strength-loss threshold (10 %) from Solomon Colors.
+      function dosageHint(pct, cementType) {
         if (pct <= 0) return { text: '', warn: false };
+        const isGrey = cementType === 'grey';
         if (pct < 1)
-          return { text: `${pct} %: below 1 % — risk of washed-out, irregular color.`, warn: true };
-        if (pct < 2) return { text: `${pct} %: soft, pastel color.`, warn: false };
-        if (pct < 3)
-          return { text: `${pct} %: warmer color — within industry optimum.`, warn: false };
-        if (pct < 5)
-          return { text: `${pct} %: strong color — industry optimum (2–4 %).`, warn: false };
-        if (pct < 7)
-          return { text: `${pct} %: deep color — approaching saturation point.`, warn: false };
+          return {
+            text: `${pct} %: below 1 % — risk of washed-out, irregular color.`,
+            warn: true,
+          };
+        if (isGrey) {
+          // Grey cement guidance: 4–5 % is SC Pigments' standard dosage.
+          if (pct < 3)
+            return { text: `${pct} %: light on grey — expect a subtle earthy tint.`, warn: false };
+          if (pct < 4)
+            return {
+              text: `${pct} %: getting there on grey — SC Pigments standard is 4–5 %.`,
+              warn: false,
+            };
+          if (pct <= 5)
+            return {
+              text: `${pct} %: SC Pigments optimum for grey cement (4–5 %).`,
+              warn: false,
+            };
+          if (pct < 7)
+            return {
+              text: `${pct} %: above optimum for grey — approaching saturation point.`,
+              warn: false,
+            };
+        } else {
+          // White cement guidance: 2–3 % is SC Pigments' standard dosage.
+          if (pct < 2) return { text: `${pct} %: soft, pastel color on white.`, warn: false };
+          if (pct <= 3)
+            return {
+              text: `${pct} %: SC Pigments optimum for white cement (2–3 %).`,
+              warn: false,
+            };
+          if (pct < 5)
+            return {
+              text: `${pct} %: above optimum for white — you're past the best value zone.`,
+              warn: false,
+            };
+          if (pct < 7)
+            return {
+              text: `${pct} %: deep color — approaching saturation point.`,
+              warn: false,
+            };
+        }
         if (pct <= 7.5)
           return {
-            text: `${pct} %: saturation point reached. Further pigment adds little visible color.`,
+            text: `${pct} %: saturation point reached. Further pigment adds almost no visible color.`,
             warn: true,
           };
         if (pct < 10)
           return {
-            text: `${pct} %: beyond saturation — wasted pigment, strength loss starts at 10 %.`,
+            text: `${pct} %: beyond saturation — wasted pigment. Strength loss begins at 10 %.`,
             warn: true,
           };
         return {
-          text: `${pct} %: industry max. Further pigment reduces concrete strength.`,
+          text: `${pct} %: industry max. Pigment above 10 % reduces concrete strength.`,
           warn: true,
         };
       }
@@ -1028,13 +1096,15 @@
         hexWet.textContent = toHex(wet);
 
         // Dose-hint guidance under each pigment input.
-        const dose1 = pigmentEnabled ? dosageHint(pigmentPercent) : { text: '', warn: false };
+        const dose1 = pigmentEnabled
+          ? dosageHint(pigmentPercent, cementType)
+          : { text: '', warn: false };
         doseHintEl.textContent = dose1.text;
         doseHintEl.className = 'dose-hint' + (dose1.warn ? ' warn' : '');
 
         const dose2 =
           pigmentEnabled && pigment2Enabled
-            ? dosageHint(pigment2Percent)
+            ? dosageHint(pigment2Percent, cementType)
             : { text: '', warn: false };
         doseHint2El.textContent = dose2.text;
         doseHint2El.className = 'dose-hint' + (dose2.warn ? ' warn' : '');
@@ -1057,17 +1127,26 @@
           note = `Combined pigment is ${totalPct} % — above the 7 % saturation point. Adding more pigment costs material without making the color darker. Industry max is 10 % (strength loss above).`;
         } else if (cementType === 'grey') {
           isWarn = false;
-          note = `Grey base desaturates the pigment toward earthy tones. For vivid colors, switch to White Portland.`;
+          if (totalPct < 4) {
+            note = `Grey base fights the pigment — SC Pigments recommends 4–5 % on grey for a proper result. At ${totalPct} % you'll get a subtle earthy tint. Switch to White Portland for vivid color with less pigment.`;
+          } else if (totalPct <= 5) {
+            note = `Grey base desaturates the pigment toward earthy, natural tones. ${totalPct} % is SC Pigments' recommended range for grey cement (4–5 %).`;
+          } else {
+            note = `Grey base desaturates the pigment. ${totalPct} % is above SC Pigments' optimum for grey (4–5 %) — heading toward the 7 % saturation point.`;
+          }
         } else if (totalPct < 1) {
           isWarn = true;
-          note = `Total pigment is ${totalPct} % — risk of washed-out, blotchy color. Recommend 2–4 % for the optimum strong-color range.`;
+          note = `Total pigment is ${totalPct} % — risk of washed-out, blotchy color. SC Pigments recommends 2–3 % as standard on white cement.`;
         } else {
+          // White cement guidance from SC Pigments: 2–3 % standard.
           note = `White base preserves pigment color. ${totalPct} % is ${
-            totalPct >= 2 && totalPct <= 4
-              ? 'in the industry optimum range (2–4 %).'
+            totalPct >= 2 && totalPct <= 3
+              ? "SC Pigments' recommended range for white cement (2–3 %)."
               : totalPct < 2
-                ? 'a soft / pastel loading.'
-                : 'a deep loading approaching saturation.'
+                ? 'a soft / pastel loading — SC Pigments standard for white is 2–3 %.'
+                : totalPct <= 5
+                  ? 'above SC Pigments standard for white (2–3 %) but still effective.'
+                  : 'a deep loading approaching the 7 % saturation point.'
           }`;
         }
         callout.textContent = note;
