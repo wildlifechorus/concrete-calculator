@@ -22,7 +22,7 @@ async function handleScratchMix() {
 
 async function handleMoldCalculation() {
   console.log('\n📐 Mold Volume Calculator');
-  const { volume, tolerance } = await promptMoldVolume();
+  const { volume, tolerance, stlInfo } = await promptMoldVolume();
   const toleranceDec = tolerance / 100;
   const safeVolume = volume * (1 + toleranceDec);
   const concreteWeight = safeVolume * MIX.CONCRETE_DENSITY_G_PER_MM3;
@@ -36,6 +36,14 @@ async function handleMoldCalculation() {
   displayScratchResults(results);
 
   console.log('\n📊 Mold Volume Summary:');
+  if (stlInfo) {
+    const { x, y, z } = stlInfo.boundingBox;
+    console.log(`STL file:  ${stlInfo.filePath}`);
+    console.log(
+      `Mesh:      ${stlInfo.triangleCount.toLocaleString()} triangles  |  ` +
+        `${x.toFixed(1)} × ${y.toFixed(1)} × ${z.toFixed(1)} mm`,
+    );
+  }
   console.log(`Original volume: ${volume.toFixed(1)} mm³`);
   console.log(`With ${tolerance}% tolerance: ${safeVolume.toFixed(1)} mm³`);
   console.log(`Concrete density: ${MIX.CONCRETE_DENSITY_G_PER_MM3} g/mm³`);
