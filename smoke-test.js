@@ -2,8 +2,8 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateScratchMix, calculateLightweightMix, formatDefoamer } from './lib/calculations.js';
-import { LIGHTWEIGHT } from './lib/constants.js';
+import { calculateScratchMix, formatDefoamer } from './lib/calculations.js';
+import { MIX } from './lib/constants.js';
 
 const close = (actual, expected, tolerance = 0.001) => {
   const diff = Math.abs(actual - expected);
@@ -235,144 +235,55 @@ describe('calculateScratchMix — cement-only, grey Portland', () => {
 });
 
 // ---------------------------------------------------------------------------
-// calculateLightweightMix tests
+// AR glass fibre tests (now part of the standard scratch mix)
 // ---------------------------------------------------------------------------
 
-describe('calculateLightweightMix — Portland only, fibers on, no pigment', () => {
-  const r = calculateLightweightMix({
-    cementWeight: 1000,
+describe('calculateScratchMix — AR fibers on, Portland only, with sand', () => {
+  const r = calculateScratchMix({
+    totalAmount: 1000,
     useCSA: false,
-    useX33: true,
+    useX33: false,
     useFibers: true,
     cementType: 'grey',
+    useSand: true,
     pigmentPercent: 0,
   });
 
-  it('portlandCement = cementWeight when no CSA', () => close(r.portlandCement, 1000.0));
-  it('csaCement = 0', () => close(r.csaCement, 0.0));
-  it('totalCementWeight = 1000g', () => close(r.totalCementWeight, 1000.0));
-  it('perliteVolumeL = (1000/1500) * 2', () => close(r.perliteVolumeL, (1000 / LIGHTWEIGHT.CEMENT_BULK_DENSITY_G_PER_L) * LIGHTWEIGHT.PERLITE_CEMENT_VOLUME_RATIO));
-  it('water = W/C 0.38 × 1000g = 380ml', () => close(r.water, 380.0));
-  it('plasticizer = 0.75% × 1000g = 7.5ml', () => close(r.plasticizer, 7.5));
-  it('x33Amount = 0.05% × 1000g = 0.5g', () => close(r.x33Amount, 0.5));
-  it('fiberWeight = 3% × 1000g = 30g', () => close(r.fiberWeight, 30.0));
-  it('pigmentWeight = 0', () => close(r.pigmentWeight, 0.0));
-  it('useCSA = false', () => assert.equal(r.useCSA, false));
-  it('useX33 = true', () => assert.equal(r.useX33, true));
   it('useFibers = true', () => assert.equal(r.useFibers, true));
-  it('cementType = grey', () => assert.equal(r.cementType, 'grey'));
+  it('fiberWeight = 3% of 500g cement = 15g', () => close(r.fiberWeight, 500 * MIX.FIBER_PERCENT));
+  it('totalCementWeight unchanged = 500g', () => close(r.totalCementWeight, 500.0));
+  it('water unchanged = 220ml', () => close(r.water, 220.0));
+  it('plasticizer unchanged = 3.75ml', () => close(r.plasticizer, 3.75));
 });
 
-describe('calculateLightweightMix — CSA blend, fibers off, no pigment', () => {
-  const r = calculateLightweightMix({
-    cementWeight: 1000,
-    useCSA: true,
-    useX33: false,
-    useFibers: false,
-    cementType: 'grey',
-    pigmentPercent: 0,
-  });
-
-  it('portlandCement = 50% × 1000g = 500g', () => close(r.portlandCement, 500.0));
-  it('csaCement = 50% × 1000g = 500g', () => close(r.csaCement, 500.0));
-  it('totalCementWeight = 1000g', () => close(r.totalCementWeight, 1000.0));
-  it('water = 380ml', () => close(r.water, 380.0));
-  it('x33Amount = 0 when useX33 false', () => close(r.x33Amount, 0.0));
-  it('fiberWeight = 0 when useFibers false', () => close(r.fiberWeight, 0.0));
-  it('useCSA = true', () => assert.equal(r.useCSA, true));
-  it('useX33 = false', () => assert.equal(r.useX33, false));
-  it('useFibers = false', () => assert.equal(r.useFibers, false));
-});
-
-describe('calculateLightweightMix — White Portland, 5% pigment', () => {
-  const r = calculateLightweightMix({
-    cementWeight: 1000,
-    useCSA: false,
-    useX33: true,
-    useFibers: true,
-    cementType: 'white',
-    pigmentPercent: 5,
-    pigmentKey: 'red',
-  });
-
-  it('cementType = white', () => assert.equal(r.cementType, 'white'));
-  it('pigmentWeight = 5% × 1000g = 50g', () => close(r.pigmentWeight, 50.0));
-  it('pigmentKey = red', () => assert.equal(r.pigmentKey, 'red'));
-  it('pigmentPercent = 5', () => assert.equal(r.pigmentPercent, 5));
-  it('totalCementWeight unchanged = 1000g', () => close(r.totalCementWeight, 1000.0));
-  it('water unchanged = 380ml', () => close(r.water, 380.0));
-});
-
-describe('calculateLightweightMix — large batch, CSA + fibers', () => {
-  const r = calculateLightweightMix({
-    cementWeight: 5000,
-    useCSA: true,
-    useX33: true,
-    useFibers: true,
-    cementType: 'grey',
-    pigmentPercent: 0,
-  });
-
-  it('portlandCement = 2500g', () => close(r.portlandCement, 2500.0));
-  it('csaCement = 2500g', () => close(r.csaCement, 2500.0));
-  it('water = 380 × 5 = 1900ml', () => close(r.water, 1900.0));
-  it('plasticizer = 7.5 × 5 = 37.5ml', () => close(r.plasticizer, 37.5));
-  it('x33Amount = 2.5g', () => close(r.x33Amount, 2.5));
-  it('fiberWeight = 3% × 5000g = 150g', () => close(r.fiberWeight, 150.0));
-  it('perliteVolumeL scales linearly', () => {
-    const single = calculateLightweightMix({ cementWeight: 1000, useCSA: false, useX33: false, useFibers: false, cementType: 'grey', pigmentPercent: 0 });
-    close(r.perliteVolumeL, single.perliteVolumeL * 5);
-  });
-});
-
-describe('calculateLightweightMix — mold volume path (cement derived from density)', () => {
-  const moldVolume = 1000000; // 1,000,000 mm³
-  const cementWeight = moldVolume * LIGHTWEIGHT.CONCRETE_DENSITY_G_PER_MM3;
-  const r = calculateLightweightMix({
-    cementWeight,
+describe('calculateScratchMix — AR fibers off (default)', () => {
+  const r = calculateScratchMix({
+    totalAmount: 1000,
     useCSA: false,
     useX33: false,
-    useFibers: false,
     cementType: 'grey',
+    useSand: true,
     pigmentPercent: 0,
   });
 
-  it('cementWeight matches density calculation', () => close(r.cementWeight, cementWeight));
-  it('water = cementWeight × 0.38', () => close(r.water, cementWeight * LIGHTWEIGHT.WATER_CEMENT_RATIO));
-  it('perliteVolumeL > 0', () => assert.ok(r.perliteVolumeL > 0));
+  it('useFibers = false by default', () => assert.equal(r.useFibers, false));
+  it('fiberWeight = 0', () => close(r.fiberWeight, 0.0));
 });
 
-describe('calculateLightweightMix — pigment boundary checks', () => {
-  it('1% pigment of 500g cement = 5g', () => {
-    const r = calculateLightweightMix({ cementWeight: 500, useCSA: false, useX33: false, useFibers: false, cementType: 'white', pigmentPercent: 1 });
-    close(r.pigmentWeight, 5.0);
-  });
-  it('10% pigment of 500g cement = 50g', () => {
-    const r = calculateLightweightMix({ cementWeight: 500, useCSA: false, useX33: false, useFibers: false, cementType: 'white', pigmentPercent: 10 });
-    close(r.pigmentWeight, 50.0);
-  });
-});
-
-describe('calculateLightweightMix — X33 dosage within safe range', () => {
-  const r = calculateLightweightMix({
-    cementWeight: 1000,
-    useCSA: false,
-    useX33: true,
-    useFibers: false,
-    cementType: 'grey',
-    pigmentPercent: 0,
-  });
-
-  it('x33Amount >= 0.01% of cement', () => assert.ok(r.x33Amount >= r.totalCementWeight * 0.0001));
-  it('x33Amount <= 0.20% of cement', () => assert.ok(r.x33Amount <= r.totalCementWeight * 0.002));
-});
-
-describe('calculateLightweightMix — perlite volume ratio invariant', () => {
-  for (const w of [200, 500, 1000, 2500]) {
-    it(`holds at ${w}g cement`, () => {
-      const r = calculateLightweightMix({ cementWeight: w, useCSA: false, useX33: false, useFibers: false, cementType: 'grey', pigmentPercent: 0 });
-      const expectedL = (w / LIGHTWEIGHT.CEMENT_BULK_DENSITY_G_PER_L) * LIGHTWEIGHT.PERLITE_CEMENT_VOLUME_RATIO;
-      close(r.perliteVolumeL, expectedL);
+describe('calculateScratchMix — AR fibers scale with cement weight (CSA blend)', () => {
+  for (const total of [500, 1000, 2000]) {
+    it(`fiberWeight correct at ${total}g total mix`, () => {
+      const r = calculateScratchMix({
+        totalAmount: total,
+        useCSA: true,
+        useX33: false,
+        useFibers: true,
+        cementType: 'grey',
+        useSand: true,
+        pigmentPercent: 0,
+      });
+      // totalCementWeight = total / 2 (50% cement in 1:1 mix)
+      close(r.fiberWeight, r.totalCementWeight * MIX.FIBER_PERCENT);
     });
   }
 });
