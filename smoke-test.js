@@ -2,8 +2,8 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateScratchMix, formatDefoamer } from './lib/calculations.js';
-import { MIX } from './lib/constants.js';
+import { calculateScratchMix, calculateRubberMold, formatDefoamer } from './lib/calculations.js';
+import { MIX, UNITS } from './lib/constants.js';
 
 const close = (actual, expected, tolerance = 0.001) => {
   const diff = Math.abs(actual - expected);
@@ -307,4 +307,123 @@ describe('calculateScratchMix — cement-only, white Portland + 5% pigment', () 
   it('water = 440ml', () => close(r.water, 440.0));
   it('plasticizer = 7.5ml', () => close(r.plasticizer, 7.5));
   it('pigmentKey = brown', () => assert.equal(r.pigmentKey, 'brown'));
+});
+
+// ---------------------------------------------------------------------------
+// calculateRubberMold
+// ---------------------------------------------------------------------------
+
+describe('calculateRubberMold — single object, 10% waste', () => {
+  // Box: 1,000,000 mm³ (= 1 L)
+  // Object: 200,000 mm³ × 1
+  // Cavity: 800,000 mm³
+  // Rubber (10% waste): 880,000 mm³ = 880 ml = 0.880 L
+  const r = calculateRubberMold({
+    rubberType: 'silicone',
+    boxVolumeMm3: 1_000_000,
+    objects: [{ volumeMm3: 200_000, quantity: 1 }],
+    wastePercent: 10,
+  });
+
+  it('rubberType', () => assert.equal(r.rubberType, 'silicone'));
+  it('boxVolumeMm3', () => close(r.boxVolumeMm3, 1_000_000));
+  it('totalObjectVolumeMm3 = 200,000', () =>
+    close(r.totalObjectVolumeMm3, 200_000));
+  it('cavityVolumeMm3 = 800,000', () => close(r.cavityVolumeMm3, 800_000));
+  it('rubberVolumeMm3 = 880,000', () => close(r.rubberVolumeMm3, 880_000));
+  it('rubberMl = 880', () => close(r.rubberMl, 880));
+  it('rubberL = 0.88', () => close(r.rubberL, 0.88));
+});
+
+describe('calculateRubberMold — multiple object types, 0% waste', () => {
+  // Box: 500,000 mm³
+  // Objects: 4 × 50,000 mm³ = 200,000 mm³ + 1 × 50,000 mm³ = 50,000 mm³
+  // Total objects: 250,000 mm³
+  // Cavity: 250,000 mm³
+  // Rubber (0% waste): 250,000 mm³ = 250 ml
+  const r = calculateRubberMold({
+    rubberType: 'polyurethane',
+    boxVolumeMm3: 500_000,
+    objects: [
+      { volumeMm3: 50_000, quantity: 4 },
+      { volumeMm3: 50_000, quantity: 1 },
+    ],
+    wastePercent: 0,
+  });
+
+  it('totalObjectVolumeMm3 = 250,000', () =>
+    close(r.totalObjectVolumeMm3, 250_000));
+  it('cavityVolumeMm3 = 250,000', () => close(r.cavityVolumeMm3, 250_000));
+  it('rubberMl = 250', () => close(r.rubberMl, 250));
+  it('rubberL = 0.25', () => close(r.rubberL, 0.25));
+});
+
+describe('calculateRubberMold — no objects (empty box)', () => {
+  // Box: 200,000 mm³, no objects, 15% waste
+  // Rubber: 200,000 × 1.15 = 230,000 mm³ = 230 ml
+  const r = calculateRubberMold({
+    rubberType: 'silicone',
+    boxVolumeMm3: 200_000,
+    objects: [],
+    wastePercent: 15,
+  });
+
+  it('totalObjectVolumeMm3 = 0', () => close(r.totalObjectVolumeMm3, 0));
+  it('cavityVolumeMm3 = box volume', () => close(r.cavityVolumeMm3, 200_000));
+  it('rubberMl = 230', () => close(r.rubberMl, 230));
+});
+
+describe('calculateRubberMold — throws when objects overflow box', () => {
+  it('throws when total object volume equals box volume', () => {
+    assert.throws(
+      () =>
+        calculateRubberMold({
+          rubberType: 'silicone',
+          boxVolumeMm3: 100_000,
+          objects: [{ volumeMm3: 100_000, quantity: 1 }],
+          wastePercent: 10,
+        }),
+      /equals or exceeds/,
+    );
+  });
+
+  it('throws when total object volume exceeds box volume', () => {
+    assert.throws(
+      () =>
+        calculateRubberMold({
+          rubberType: 'silicone',
+          boxVolumeMm3: 50_000,
+          objects: [{ volumeMm3: 100_000, quantity: 1 }],
+          wastePercent: 10,
+        }),
+      /equals or exceeds/,
+    );
+  });
+
+  it('throws when box volume is zero', () => {
+    assert.throws(
+      () =>
+        calculateRubberMold({
+          rubberType: 'silicone',
+          boxVolumeMm3: 0,
+          objects: [],
+          wastePercent: 10,
+        }),
+      /greater than zero/,
+    );
+  });
+});
+
+describe('calculateRubberMold — UNITS constants are used correctly', () => {
+  const r = calculateRubberMold({
+    rubberType: 'silicone',
+    boxVolumeMm3: UNITS.MM3_PER_L,
+    objects: [],
+    wastePercent: 0,
+  });
+
+  it('1 L box with no objects and 0% waste → rubberL = 1', () =>
+    close(r.rubberL, 1));
+  it('1 L box with no objects and 0% waste → rubberMl = 1000', () =>
+    close(r.rubberMl, 1000));
 });

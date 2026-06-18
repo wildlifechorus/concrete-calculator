@@ -3,13 +3,14 @@
 import { fileURLToPath } from 'node:url';
 import inquirer from 'inquirer';
 import { MIX } from './lib/constants.js';
-import { calculateScratchMix } from './lib/calculations.js';
+import { calculateScratchMix, calculateRubberMold } from './lib/calculations.js';
 import {
   promptScratchOptions,
   promptMoldVolume,
+  promptRubberMold,
   promptAgain,
 } from './lib/prompts.js';
-import { displayScratchResults } from './lib/display.js';
+import { displayScratchResults, displayRubberMoldResults } from './lib/display.js';
 
 console.log('\n🏗️  Concrete Calculator for Detailed Statues & Decorative Pieces\n');
 
@@ -49,6 +50,17 @@ async function handleMoldCalculation() {
   console.log(`Concrete density: ${MIX.CONCRETE_DENSITY_G_PER_MM3} g/mm³`);
 }
 
+async function handleRubberMold() {
+  console.log('\n🧪 Rubber Mold Calculator\n');
+  const params = await promptRubberMold();
+  try {
+    const results = calculateRubberMold(params);
+    displayRubberMoldResults(results);
+  } catch (err) {
+    console.error(`\n  ✖ ${err.message}\n`);
+  }
+}
+
 async function main() {
   try {
     let again = true;
@@ -61,14 +73,17 @@ async function main() {
           choices: [
             { name: 'From scratch (custom mix)', value: 'scratch' },
             { name: 'Calculate for mold volume', value: 'mold' },
+            { name: 'Calculate mold rubber (silicone / PU)', value: 'rubber' },
           ],
         },
       ]);
 
       if (mixType === 'scratch') {
         await handleScratchMix();
-      } else {
+      } else if (mixType === 'mold') {
         await handleMoldCalculation();
+      } else {
+        await handleRubberMold();
       }
 
       console.log('\n' + '─'.repeat(55));
